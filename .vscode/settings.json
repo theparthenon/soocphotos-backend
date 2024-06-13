@@ -8,4 +8,5 @@
         "black"
       ],
       "python.analysis.autoImportCompletions": true,
+      "pylint.args": [ "--load-plugins=pylint_django", "--django-settings-module=core.settings" ]
 }

@@ -4,11 +4,15 @@ import os
 import datetime
 from pathlib import Path
 from concurrent_log_handler.queue import setup_logging_queues
+from dotenv import load_dotenv
+
+PROJ_DIR = Path(__file__).resolve().parent.parent.parent  # soocphotos
+
+load_dotenv(PROJ_DIR / "backend.env")
 
 #################################################
 # Directories                                   #
 #################################################
-PROJ_DIR = Path(__file__).resolve().parent.parent.parent  # soocphotos
 BASE_DIR = Path(__file__).resolve().parent.parent  # Backend
 BASE_DATA = os.environ.get("BASE_DATA", os.path.join(PROJ_DIR, "data"))
 BASE_LOGS = os.environ.get("BASE_LOGS", os.path.join(PROJ_DIR, "logs"))
@@ -156,6 +160,8 @@ WSGI_APPLICATION = "core.wsgi.application"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 DEFAULT_FAVORITE_MIN_RATING = os.environ.get("DEFAULT_FAVORITE_MIN_RATING", 4)
+
+LLM_MODEL = os.environ.get("LLM_MODEL", "mistral-7b-v0.1.Q5_K_M")
 
 #################################################
 # Rest Framework                                #
