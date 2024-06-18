@@ -10,7 +10,9 @@ from api.models.person import Person
 from api.models.photos import Photos
 
 
-def change_api_updated_at(sender=None, instance=None, *args, **kwargs):
+def change_api_updated_at(
+    sender=None, instance=None, *args, **kwargs
+):  # pylint: disable=keyword-arg-before-vararg, unused-argument
     """Updates the 'api_updated_at_timestamp' in the cache with the current UTC datetime."""
 
     cache.set("api_updated_at_timestamp", datetime.now(datetime.UTC))

@@ -3,6 +3,8 @@
 from django.apps import AppConfig
 
 
-class ApiConfig(AppConfig):  # pylint: disable=missing-class-docstring
+class ApiConfig(AppConfig):
+    """Django app configuration for `api`."""
+
     name = "api"
     verbose_name = "SoocPhotos"

@@ -1,8 +1,18 @@
 """Create User model for database."""
 
+import pytz
+
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+from api.date_time_extractor import DEFAULT_RULES_JSON
+
+
+def get_default_config_datetime_rules():  # This is a callable
+    """Returns default rules in json format."""
+
+    return DEFAULT_RULES_JSON
 
 
 def get_default_llm_settings():
@@ -35,6 +45,11 @@ class User(AbstractUser):
         default=settings.DEFAULT_FAVORITE_MIN_RATING, db_index=True
     )
     llm_settings = models.JSONField(default=get_default_llm_settings)
+    datetime_rules = models.JSONField(default=get_default_config_datetime_rules)
+    default_timezone = models.TextField(
+        choices=[(x, x) for x in pytz.all_timezones],
+        default="UTC",
+    )
 
     class FaceRecogniton(models.TextChoices):
         """Options for facial recognition model."""
@@ -59,6 +74,17 @@ class User(AbstractUser):
 
     captioning_model = models.TextField(
         choices=CaptioningModel.choices, default=CaptioningModel.IM2TXT_ONNX
+    )
+
+    class SaveMetadata(models.TextChoices):
+        """Choices for save metadata option."""
+
+        OFF = "OFF"
+        MEDIA_FILE = "MEDIA_FILE"
+        SIDECAR_FILE = "SIDECAR_FILE"
+
+    save_metadata_to_disk = models.TextField(
+        choices=SaveMetadata.choices, default=SaveMetadata.OFF
     )
 
 

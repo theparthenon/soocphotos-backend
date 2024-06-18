@@ -20,6 +20,7 @@ CONSUME_DIR = os.environ.get("CONSUME_DIR", os.path.join(BASE_DATA, "consume"))
 MEDIA_ROOT = os.path.join(BASE_DATA, "protected_media")
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
 PHOTOS = os.environ.get("PHOTOS", os.path.join(MEDIA_ROOT, "originals"))
+UPLOAD_ROOT = os.environ.get("UPLOADS", os.path.join(MEDIA_ROOT, "uploads"))
 IM2TXT_ROOT = os.path.join(MEDIA_ROOT, "data_models", "im2txt")
 IM2TXT_ONNX_ROOT = os.path.join(MEDIA_ROOT, "data_models", "im2txt_onnx")
 BLIP_ROOT = os.path.join(MEDIA_ROOT, "data_models", "blip")
@@ -78,10 +79,12 @@ INSTALLED_APPS = [
     "django_extensions",
     "django_filters",
     "django_q",
-    "drf_yasg",
     "rest_framework",
     "taggit",
 ]
+
+if DEBUG:
+    INSTALLED_APPS.append("drf_yasg")
 
 #################################################
 # Middleware                                    #
@@ -105,7 +108,7 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [],
-        "APP_DIRS": False,
+        "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.debug",
@@ -163,6 +166,16 @@ DEFAULT_FAVORITE_MIN_RATING = os.environ.get("DEFAULT_FAVORITE_MIN_RATING", 4)
 
 LLM_MODEL = os.environ.get("LLM_MODEL", "mistral-7b-v0.1.Q5_K_M")
 
+CAPTIONING_MODEL = os.environ.get("CAPTIONING_MODEL", "im2txt")
+
+MAP_API_PROVIDER = os.environ.get("MAP_API_PROVIDER", "photon")
+
+MAP_API_KEY = os.environ.get("MAP_API_KEY", "")
+
+SKIP_PATTERNS = os.environ.get("SKIP_PATTERNS", ".")
+
+ALLOW_UPLOAD = os.environ.get("ALLOW_UPLOAD", "True")
+
 #################################################
 # Rest Framework                                #
 #################################################
@@ -175,7 +188,6 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
-    "EXCEPTION_HANDLER": "api.middleware.custom_exception_handler.custom_exception_handler",
     "PAGE_SIZE": 20000,
 }
 

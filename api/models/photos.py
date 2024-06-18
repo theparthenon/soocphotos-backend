@@ -1,19 +1,26 @@
+# pylint: disable=E1101, W0212
 """Create Photos model for database."""
 
+import json
+import numbers
 import os
 from io import BytesIO
-
-import magic
+import requests
 import numpy as np
 import PIL
 from django.core.files.base import ContentFile
 from django.db import models
+from django.db.models import Q
 from django.db.utils import IntegrityError
 from taggit.managers import TaggableManager
 
+from api import date_time_extractor
+from api.exif_tags import Tags
 import api.models
+from api.models.file import File
 import api.face_extractor as face_extractor
 from api.face_recognition import get_face_encodings
+from api.geocode.geocode import reverse_geocode
 from api.image_captioning import generate_caption
 from api.image_conversion import (
     does_optimized_image_exist,
@@ -23,21 +30,35 @@ from api.image_conversion import (
     generate_thumbnail_for_video,
 )
 from api.llm import generate_prompt
-from api.utils import logger
+from api.utils import get_metadata, logger, write_metadata
 
 from .user import User, get_deleted_user
+
+
+class VisiblePhotoManager(models.Manager):
+    """Only show photos that are not hidden or deleted."""
+
+    def get_queryset(self):
+        """Get photos that are not hidden or deleted."""
+
+        return super().get_queryset().filter(Q(hidden=False) & Q(deleted=False))
 
 
 class Photos(models.Model):
     """Photos model initialization."""
 
     image_hash = models.CharField(primary_key=True, max_length=64, null=False)
-    image_size = models.BigIntegerField(default=0)
     owner = models.ForeignKey(
         User, on_delete=models.SET(get_deleted_user), default=None
     )
-
-    original_image = models.ImageField(upload_to="originals")
+    files = models.ManyToManyField(File)
+    original_image = models.ForeignKey(
+        File,
+        related_name="main_photo",
+        on_delete=models.SET_NULL,
+        blank=False,
+        null=True,
+    )
     optimized_image = models.ImageField(upload_to="optimized")
     thumbnail = models.ImageField(upload_to="thumbnails")
     added_on = models.DateTimeField(auto_now_add=True)
@@ -53,17 +74,31 @@ class Photos(models.Model):
     search_captions = models.TextField(blank=True, null=True, db_index=True)
     search_location = models.TextField(blank=True, null=True, db_index=True)
 
+    timestamp = models.DateTimeField(blank=True, null=True, db_index=True)
+
+    size = models.BigIntegerField(default=0)
+    width = models.IntegerField(default=0)
+    height = models.IntegerField(default=0)
     rating = models.IntegerField(default=0, db_index=True)
     deleted = models.BooleanField(default=False, db_index=True)
     hidden = models.BooleanField(default=False, db_index=True)
     video = models.BooleanField(default=False)
     video_length = models.TextField(blank=True, null=True)
 
+    dominant_color = models.TextField(blank=True, null=True)
+
     tags = TaggableManager()
 
     objects = models.Manager()
+    visible = VisiblePhotoManager()
 
     _loaded_values = {}
+
+    class Meta:
+        """Meta class for Photos model."""
+
+        ordering = ["-added_on"]
+        verbose_name_plural = "Photos"
 
     def __str__(self):
         return f"{self.image_hash} - {self.owner} - {self.added_on} - {self.rating}"
@@ -84,8 +119,22 @@ class Photos(models.Model):
         force_update=False,
         using=None,
         update_fields=None,
+        save_metadata=True,
     ):
         """Save the current instance of the model to the database."""
+
+        modified_fields = [
+            field_name
+            for field_name, value in self._loaded_values.items()
+            if value != getattr(self, field_name)
+        ]
+        user = User.objects.get(username=self.owner)
+
+        if save_metadata and user.save_metadata_to_disk != User.SaveMetadata.OFF:
+            self._save_metadata(
+                modified_fields,
+                user.save_metadata_to_disk == User.SaveMetadata.SIDECAR_FILE,
+            )
 
         return super().save(
             force_insert=force_insert,
@@ -93,6 +142,60 @@ class Photos(models.Model):
             using=using,
             update_fields=update_fields,
         )
+
+    def _extract_date_time_from_exif(self, commit=True):
+        """Extract date time from photo EXIF data."""
+
+        def exif_getter(tags):
+            return get_metadata(self.original_image.path, tags=tags, try_sidecar=True)
+
+        datetime_config = json.loads(self.owner.datetime_rules)
+        extracted_local_time = date_time_extractor.extract_local_date_time(
+            self.original_image.path,
+            date_time_extractor.as_rules(datetime_config),
+            exif_getter,
+            self.exif_gps_lat,
+            self.exif_gps_lon,
+            self.owner.default_timezone,
+            self.timestamp,
+        )
+
+        if self.exif_timestamp != extracted_local_time:
+            self.exif_timestamp = extracted_local_time
+
+        if commit:
+            self.save()
+
+    def _extract_exif_data(self, commit=True):
+        (size, width, height, video_length, rating) = get_metadata(
+            self.original_image.path,
+            tags=[
+                Tags.FILE_SIZE,
+                Tags.IMAGE_WIDTH,
+                Tags.IMAGE_HEIGHT,
+                Tags.QUICKTIME_DURATION,
+                Tags.RATING,
+            ],
+            try_sidecar=True,
+        )
+
+        if size and isinstance(size, numbers.Number):
+            self.size = size
+
+        if width and isinstance(width, numbers.Number):
+            self.width = width
+
+        if height and isinstance(height, numbers.Number):
+            self.height = height
+
+        if video_length and isinstance(video_length, numbers.Number):
+            self.video_length = video_length
+
+        if rating and isinstance(rating, numbers.Number):
+            self.rating = rating
+
+        if commit:
+            self.save()
 
     def _extract_faces(self, second_try=False):
         unknown_cluster: api.models.cluster.Cluster = (
@@ -190,19 +293,51 @@ class Photos(models.Model):
             raise e
 
     def _geolocate(self, commit=True):
-        pass
+        new_gps_lat, new_gps_lon = get_metadata(
+            self.original_image.path,
+            tags=[Tags.LATITUDE, Tags.LONGITUDE],
+            try_sidecar=True,
+        )
+
+        self.exif_gps_lat = float(new_gps_lat)
+        self.exif_gps_lon = float(new_gps_lon)
+
+        if commit:
+            self.save()
+
+        try:
+            res = reverse_geocode(new_gps_lat, new_gps_lon)
+
+            if not res:
+                return
+        except Exception as e:  # pylint: disable=broad-except
+            logger.warning(e)
+            logger.warning(
+                "Something went wrong with geolocating %s", self.original_image
+            )
+
+            return
+
+        self.geolocation_json = res
+        self.search_location = res["address"]
+
+        # TODO: possibly add places album
+
+        if commit:
+            self.save()
 
     def _generate_captions(self, commit=True):
         try:
             image_path = self.optimized_image.path
             confidence = self.owner.confidence
-            json = {
+            json_to_use = {
                 "image_path": image_path,
                 "confidence": confidence,
             }
 
-            # TODO: plug in res_places365
-            res_places365 = None
+            res_places365 = requests.post(
+                "http://localhost:8011/generate-tags", json=json_to_use, timeout=120
+            ).json()["tags"]
 
             if self.captions_json is None:
                 self.captions_json = {}
@@ -329,7 +464,7 @@ class Photos(models.Model):
 
             return False
 
-    def _generate_optimized_image(self):
+    def _generate_optimized_image(self, commit=True):
         try:
             if not does_optimized_image_exist("optimized", self.image_hash):
                 generate_optimized_image(
@@ -339,6 +474,9 @@ class Photos(models.Model):
                     file_type=".webp",
                     quality=85,
                 )
+            if commit:
+                self.save()
+
         except Exception:  # pylint: disable=broad-except
             logger.exception("Could not generate optimized image for image %s", self)
 
@@ -376,9 +514,6 @@ class Photos(models.Model):
         except Exception:  # pylint: disable=broad-except
             logger.exception("Could not generate thumbnail for image %s", self)
 
-    def _has_exif_data(self):
-        pass
-
     def manual_delete(self):
         """
         Deletes the original image, optimized image, and thumbnail associated
@@ -388,17 +523,48 @@ class Photos(models.Model):
         :raises Exception: If there is an error while deleting the files.
         """
 
-        try:
-            if os.path.isfile(self.original_image.path):
-                logger.info("Removing photo %s", self.original_image.path)
-                os.remove(self.original_image.path)
-                os.remove(self.optimized_image.path)
-                os.remove(self.thumbnail.path)
+        for file in self.files.all():
+            if os.path.isfile(file.path):
+                logger.info("Removing photo %s", file.path)
+                os.remove(file.path)
+                file.delete()
 
-            return self.delete()
-        except Exception as e:
-            logger.exception("Could not delete photo %s", self)
-            raise e
+        # TODO: Handle wrong file permissions
+        return self.delete()
+
+    def delete_duplicate(self, duplicate_path):
+        """
+        Deletes a duplicate photo file and updates the `files` field of the current object.
+        Args:
+            duplicate_path (str): The path of the duplicate photo file to be deleted.
+        Returns:
+            bool: True if the duplicate photo file was successfully deleted, False otherwise.
+        """
+
+        # TODO: Handle wrong file permissions
+        for file in self.files.all():
+            if file.path == duplicate_path:
+                if not os.path.isfile(duplicate_path):
+                    logger.info(
+                        "Path does not lead to a valid file: %s", duplicate_path
+                    )
+                    self.files.remove(file)
+                    file.delete()
+                    self.save()
+
+                    return False
+
+                logger.info("Removing photo %s", duplicate_path)
+                os.remove(duplicate_path)
+                self.files.remove(file)
+                self.save()
+                file.delete()
+
+                return True
+
+        logger.info("Path is not valid: %s", duplicate_path)
+
+        return False
 
     def _save_captions(self, commit=True, caption=None):
         image_path = self.optimized_image.path
@@ -433,19 +599,49 @@ class Photos(models.Model):
 
             return False
 
-    def _save_metadata(self, modified_fields=None):
-        pass
+    def _save_metadata(self, modified_fields=None, use_sidecar=True):
+        tags_to_write = {}
 
+        if modified_fields is None or "rating" in modified_fields:
+            tags_to_write[Tags.RATING] = self.rating
 
-def is_video(path):
-    """Check if the provided file path corresponds to a video file."""
+        if "timestamp" in modified_fields:
+            # TODO: only works for files and not sidecar file
+            tags_to_write[Tags.DATE_TIME] = self.timestamp
 
-    try:
-        mime = magic.Magic(mime=True)
-        filename = mime.from_file(path)
+        if tags_to_write:
+            write_metadata(
+                self.original_image.path, tags_to_write, use_sidecar=use_sidecar
+            )
 
-        return filename.find("video") != -1
-    except Exception as e:
-        logger.error("could not determine if %s is a video", path)
+    def _check_files(self):
+        for file in self.files.all():
+            if not file.path or not os.path.exists(file.path):
+                self.files.remove(file)
+                file.missing = True
+                file.save()
 
-        raise e
+        self.save()
+
+    def _get_dominant_color(self, palette_size=16):
+        # Skip if it's already calculated
+        if self.dominant_color:
+            return
+
+        try:
+            # Resize image to speed up processing
+            img = PIL.Image.open(self.optimized_image.path)
+            img.thumbnail((100, 100))
+
+            # Reduce colors (uses k-means internally)
+            paletted = img.convert("P", palette=1, colors=palette_size)
+
+            # Find the color that occurs most often
+            palette = paletted.getpalette()
+            color_counts = sorted(paletted.getcolors(), reverse=True)
+            palette_index = color_counts[0][1]
+            dominant_color = palette[palette_index * 3 : palette_index * 3 + 3]
+            self.dominant_color = dominant_color
+            self.save()
+        except ValueError:
+            logger.info("Cannot calculate dominant color %s object", self)

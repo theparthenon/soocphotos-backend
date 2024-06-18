@@ -15,3 +15,6 @@ class Tags:
     LONGITUDE = "Composite:GPSLongitude"
     GPS_DATE_TIME = "Composite:GPSDateTime"
     FILE_SIZE = "File:FileSize"
+    REGION_INFO = "XMP:RegionInfo"
+    ROTATION = "QuickTime:Rotation"
+    ORIENTATION = "EXIF:Orientation"

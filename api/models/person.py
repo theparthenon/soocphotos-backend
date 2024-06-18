@@ -46,6 +46,9 @@ class Person(models.Model):
         default=None,
         null=True,
     )
+    date_of_birth = models.DateField(null=True)
+    date_of_death = models.DateField(null=True)
+    notes = models.TextField(null=True)
 
     def __str__(self):
         return (
@@ -75,8 +78,8 @@ class Person(models.Model):
 
     def _set_default_cover_photo(self):
         if not self.cover_photo:
-            self.cover_photo = self.faces.first().photo
-            self.cover_face = self.faces.first()
+            self.cover_photo = self.faces.first().photo  # pylint: disable=no-member
+            self.cover_face = self.faces.first()  # pylint: disable=no-member
             self.save()
 
     def get_photos(self, owner):
@@ -105,7 +108,8 @@ class Person(models.Model):
 
         photos = [face.photo for face in faces if hasattr(face.photo, "owner")]
         photos.sort(
-            key=lambda x: x.exif_timestamp or utc.localize(datetime.datetime.min),
+            key=lambda x: x.exif_timestamp
+            or utc.localize(datetime.datetime.min),  # pylint: disable=E1120
             reverse=True,
         )
         return photos
