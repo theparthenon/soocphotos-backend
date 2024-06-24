@@ -54,8 +54,9 @@ def create_face_locations():
     except Exception:
         return "", 400
 
-    image = np.array(PIL.Image.open(source))
-    face_locations = face_recognition.face_locations(image, model=model)
+    # image = np.array(PIL.Image.open(source))
+    image = face_recognition.load_image_file(source)
+    face_locations = face_recognition.face_locations(image)
     log(f"created face_location={face_locations}")
     return {"face_locations": face_locations}, 201
 

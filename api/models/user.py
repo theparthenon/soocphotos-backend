@@ -38,7 +38,6 @@ class User(AbstractUser):
     photo_count = models.IntegerField(default=0)
     confidence = models.FloatField(default=0.1, db_index=True)
     confidence_person = models.FloatField(default=0.9)
-    semantic_search_topk = models.IntegerField(default=0)
     avatar = models.ImageField(upload_to="avatars", null=True, blank=True)
     transcode_videos = models.BooleanField(default=False)
     favorite_min_rating = models.IntegerField(

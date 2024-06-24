@@ -14,7 +14,17 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 
-from api.views import misc_views, photos, upload
+from api.views import (
+    album_date,
+    album_place,
+    album_thing,
+    faces,
+    misc_views,
+    person,
+    photos,
+    upload,
+    user,
+)
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -29,7 +39,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token["first_name"] = user.first_name
         token["last_name"] = user.last_name
         token["confidence"] = user.confidence
-        token["semantic_search_topk"] = user.semantic_search_topk
 
         return token
 
@@ -71,6 +80,44 @@ schema_view = get_schema_view(
 
 router = routers.DefaultRouter()
 
+router.register(r"api/albums/date", album_date.AlbumDateViewSet, basename="album_date")
+
+router.register(
+    r"api/albums/date/list", album_date.AlbumDateListViewSet, basename="album_date_list"
+)
+
+router.register(
+    r"api/albums/people", person.AlbumPersonViewSet, basename="album_people"
+)
+
+router.register(
+    r"api/albums/place", album_place.AlbumPlaceViewSet, basename="album_place"
+)
+
+router.register(
+    r"api/albums/place/list",
+    album_place.AlbumPlaceListViewSet,
+    basename="album_place_list",
+)
+
+router.register(
+    r"api/albums/thing", album_thing.AlbumThingViewSet, basename="album_thing"
+)
+
+router.register(
+    r"api/albums/thing/list",
+    album_thing.AlbumThingListViewSet,
+    basename="album_thing_list",
+)
+
+router.register(r"api/faces", faces.FaceListView, basename="faces")
+
+router.register(
+    r"api/faces/incomplete", faces.FaceIncompleteListView, basename="faces_incomplete"
+)
+
+router.register(r"api/people", person.PersonViewSet, basename="people")
+
 router.register(
     r"api/photos/exists", upload.UploadPhotoExists, basename="photos_exists"
 )
@@ -87,12 +134,22 @@ router.register(
     basename="photos_without_timestamp",
 )
 
+router.register(r"api/user", user.UserViewSet, basename="user")
+router.register(r"api/user/manage", user.ManageUserViewSet, basename="user_manage")
+router.register(r"api/user/delete", user.DeleteUserViewSet, basename="user_delete")
+
 
 urlpatterns = [
     re_path(r"^", include(router.urls)),
     re_path(r"^api/django-admin/", admin.site.urls),
     re_path(r"^api/auth/token/obtain/$", CustomTokenObtainPairView.as_view()),
     re_path(r"^api/auth/token/refresh/$", CustomTokenRefreshView.as_view()),
+    re_path(
+        r"^api/faces/label/", faces.SetFacePersonLabel.as_view(), name="faces_label"
+    ),
+    re_path(r"^api/faces/delete/", faces.DeleteFaces.as_view(), name="faces_delete"),
+    re_path(r"^api/faces/scan/", faces.ScanFacesView.as_view(), name="faces_scan"),
+    re_path(r"^api/faces/train/", faces.TrainFaceView.as_view(), name="faces_train"),
     re_path(r"^api/upload/", upload.UploadPhotosChunked.as_view()),
     re_path(r"^api/upload/complete/", upload.UploadPhotosChunkedComplete.as_view()),
     re_path(

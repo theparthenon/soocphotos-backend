@@ -1,6 +1,7 @@
 """Photos serializer."""
 
 import json
+import pytz
 
 from rest_framework import serializers
 
@@ -8,6 +9,15 @@ from api.image_similarity import search_similar_images
 from api.models import Photos
 from api.serializers.simple import UserSimpleSerializer
 from api.serializers.user import UserSerializer
+
+
+utc = pytz.UTC
+
+
+class PhotoHashListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Photos
+        fields = ["image_hash", "video"]
 
 
 class PhotosSerializer(serializers.ModelSerializer):
@@ -208,7 +218,7 @@ class PhotoSummarySerializer(serializers.ModelSerializer):
     date = serializers.SerializerMethodField()
     video_length = serializers.SerializerMethodField()
     exif_timestamp = serializers.SerializerMethodField()
-    owner = UserSerializer()
+    owner = UserSimpleSerializer()
 
     class Meta:
         model = Photos
@@ -221,6 +231,8 @@ class PhotoSummarySerializer(serializers.ModelSerializer):
             "owner",
             "rating",
             "exif_timestamp",
+            "height",
+            "width",
         )
 
     def get_id(self, obj) -> str:
@@ -242,6 +254,14 @@ class PhotoSummarySerializer(serializers.ModelSerializer):
             return ""
 
     def get_date(self, obj) -> str:
+        """Returns photo's date."""
+
+        if obj.exif_timestamp:
+            return obj.exif_timestamp.isoformat()
+        else:
+            return ""
+
+    def get_exif_timestamp(self, obj) -> str:
         """Returns photo's date."""
 
         if obj.exif_timestamp:
@@ -299,6 +319,55 @@ class PhotoDetailsSummarySerializer(serializers.ModelSerializer):
         """
 
         return obj.get().dominant_color is None
+
+
+class PhotosGroupedByDate:
+    """Grouped photos by date."""
+
+    def __init__(self, location, date, photos):
+        self.photos = photos
+        self.date = date
+        self.location = location
+
+
+def get_photos_ordered_by_date(photos):
+    """
+    Function to group photos by date based on exif timestamp and create a list of PhotosGroupedByDate objects.
+    Parameters:
+        photos (list): List of photo objects.
+    Returns:
+        list: List of PhotosGroupedByDate objects representing grouped photos by date.
+    """
+
+    from collections import defaultdict
+
+    groups = defaultdict(list)
+
+    for photo in photos:
+        if photo.exif_timestamp:
+            groups[photo.exif_timestamp.date().strftime("%Y-%m-%d")].append(photo)
+        else:
+            groups[photo.exif_timestamp].append(photo)
+
+    grouped_photo = list(groups.values())
+    result = []
+    no_timestamp_photos = []
+
+    for group in grouped_photo:
+        location = ""
+
+        if group[0].exif_timestamp:
+            date = group[0].exif_timestamp.date().strftime("%Y-%m-%d")
+            result.append(PhotosGroupedByDate(location, date, group))
+        else:
+            date = "No Timestamp"
+            no_timestamp_photos = PhotosGroupedByDate(location, date, group)
+
+    # Add no timestamp last
+    if no_timestamp_photos != []:
+        result.append(no_timestamp_photos)
+
+    return result
 
 
 class GroupedPhotosSerializer(serializers.ModelSerializer):

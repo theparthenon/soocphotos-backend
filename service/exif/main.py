@@ -1,17 +1,22 @@
 import exiftool
 import gevent
+import logging.handlers
 from flask import Flask, request
 from gevent.pywsgi import WSGIServer
 
+from django.conf import settings
+
+logger = logging.getLogger("exif")
+
+
 static_et = exiftool.ExifTool()
-eth = exiftool.ExifToolHelper()
 static_struct_et = exiftool.ExifTool(common_args=["-struct"])
 
 app = Flask(__name__)
 
 
 def log(message):
-    print("exif: {}".format(message))
+    logger.info("exif: %s", message)
 
 
 @app.route("/get-tags", methods=["POST"])
@@ -21,7 +26,8 @@ def get_tags():
         files_by_reverse_priority = data["files_by_reverse_priority"]
         tags = data["tags"]
         struct = data["struct"]
-    except Exception:
+    except Exception as e:
+        logger.error("An error occurred: %s", e)
         return "", 400
 
     et = None
@@ -30,19 +36,19 @@ def get_tags():
     else:
         et = static_et
     if not et.running:
-        et.run()
+        et.start()
 
     values = []
     try:
         for tag in tags:
             value = None
             for file in files_by_reverse_priority:
-                retrieved_value = eth.get_tags(tag, file)
+                retrieved_value = et.get_tag(tag, file)
                 if retrieved_value is not None:
                     value = retrieved_value
             values.append(value)
-    except Exception:
-        log("An error occurred")
+    except Exception as e:
+        logger.error("An error occurred: %s", e)
 
     return {"values": values}, 201
 
@@ -53,7 +59,7 @@ def health():
 
 
 if __name__ == "__main__":
-    log("service starting")
+    log("Exif service starting")
     server = WSGIServer(("0.0.0.0", 8010), app)
     server_thread = gevent.spawn(server.serve_forever)
     gevent.joinall([server_thread])

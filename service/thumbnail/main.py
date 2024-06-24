@@ -1,3 +1,5 @@
+"""Thumbnail service."""
+
 import gevent
 from flask import Flask, request
 from gevent.pywsgi import WSGIServer
@@ -7,11 +9,22 @@ app = Flask(__name__)
 
 
 def log(message):
-    print("thumbnail: {}".format(message))
+    print(f"thumbnail: {message}")
 
 
 @app.route("/", methods=["POST"])
 def create_thumbnail():
+    """Thumbnail service endpoint to create thumbnails.
+
+    Args:
+        source (str): Source of image
+        destination (str): Destination of created thumbnail
+        height (int): Height of created thumbnail
+
+    Returns:
+        json: Destination of created thumbnail
+    """
+
     try:
         data = request.get_json()
         source = data["source"]
@@ -19,7 +32,9 @@ def create_thumbnail():
         height = data["height"]
     except Exception:
         return "", 400
+
     log(f"creating for source={source} height={height}")
+
     with Image(filename=source) as img:
         with img.clone() as thumbnail:
             thumbnail.format = "webp"
@@ -27,12 +42,16 @@ def create_thumbnail():
             thumbnail.compression_quality = 95
             thumbnail.auto_orient()
             thumbnail.save(filename=destination)
+
     log(f"created at location={destination}")
+
     return {"thumbnail": destination}, 201
 
 
 @app.route("/health", methods=["GET"])
 def health():
+    """Returns OK if the service is up and running."""
+
     return {"status": "OK"}, 200
 
 

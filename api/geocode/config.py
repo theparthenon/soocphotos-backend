@@ -1,3 +1,6 @@
+# pylint: disable=broad-exception-raised
+"""Configuration for geocoding providers."""
+
 from django.conf import settings
 
 from .parsers.mapbox import parse as parse_mapbox
@@ -41,6 +44,8 @@ def _get_config():
 
 
 def get_provider_config(provider) -> dict:
+    """Gets the configuration for a geocoding provider."""
+
     config = _get_config()
     if provider not in config:
         raise Exception(f"Map provider not found: {provider}.")
@@ -48,6 +53,8 @@ def get_provider_config(provider) -> dict:
 
 
 def get_provider_parser(provider) -> callable:
+    """Gets the parser for a geocoding provider."""
+
     config = _get_config()
     if provider not in config:
         raise Exception(f"Map provider not found: {provider}.")

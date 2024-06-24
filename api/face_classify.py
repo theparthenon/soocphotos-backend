@@ -119,7 +119,9 @@ def create_all_clusters(user: User, job: Job = None) -> int:
     face: Face
     logger.info("Creating clusters")
 
-    data = {"all": {"encoding": [], "id": [], "person_id": [], "person_labeled": []}}
+    data = {
+        "all": {"encoding": [], "id": [], "person_id": [], "person_labeled": []},
+    }
 
     for face in Face.objects.filter(photo__owner=user).prefetch_related("person"):
         data["all"]["encoding"].append(face.get_encoding_array())
@@ -159,7 +161,9 @@ def create_all_clusters(user: User, job: Job = None) -> int:
     )
 
     logger.info("Before finding clusters")
+
     clt.fit(np.array(data["all"]["encoding"]))
+
     logger.info("After finding clusters")
 
     label_ids = np.unique(clt.labels_)

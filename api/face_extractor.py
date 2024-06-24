@@ -21,6 +21,7 @@ def extract_from_exif(image_path, optimized_image):
     (region_info, orientation) = get_metadata(
         image_path,
         tags=[Tags.REGION_INFO, Tags.ORIENTATION],
+        try_sidecar=True,
         struct=True,
     )
 
@@ -117,10 +118,7 @@ def extract_from_dlib(image_path, optimized_image, owner):
     """Extracts face locations from a given image using the dlib library."""
 
     try:
-        face_locations = get_face_locations(
-            optimized_image,
-            model=owner.face_recognition_model.lower(),
-        )
+        face_locations = get_face_locations(image_path=optimized_image)
 
     except Exception as e:  # pylint: disable=broad-except
         logger.info("Can't extract face information on photo: %s", image_path)
@@ -135,9 +133,11 @@ def extract_from_dlib(image_path, optimized_image, owner):
 def extract(image_path, optimized_image, owner):
     """Extracts face information from an image using either EXIF metadata or Dlib."""
 
-    exif = extract_from_exif(image_path, optimized_image)
+    # exif = extract_from_exif(image_path, optimized_image)
 
-    if not exif:
-        return extract_from_dlib(image_path, optimized_image, owner)
+    # if not exif:
+    #     return extract_from_dlib(image_path, optimized_image, owner)
 
-    return exif
+    # return exif
+
+    return extract_from_dlib(image_path, optimized_image, owner)

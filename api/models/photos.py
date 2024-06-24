@@ -5,13 +5,13 @@ import json
 import numbers
 import os
 from io import BytesIO
-import requests
 import numpy as np
 import PIL
 from django.core.files.base import ContentFile
 from django.db import models
 from django.db.models import Q
 from django.db.utils import IntegrityError
+import requests
 from taggit.managers import TaggableManager
 
 from api import date_time_extractor
@@ -143,6 +143,56 @@ class Photos(models.Model):
             update_fields=update_fields,
         )
 
+    def _add_location_to_album_dates(self):
+        if not self.geolocation_json:
+            return
+
+        album_date = self._find_album_date()
+        city_name = self.geolocation_json["places"][-2]
+
+        if album_date.location and len(album_date.location) > 0:
+            prev_value = album_date.location
+            new_value = prev_value
+
+            if city_name not in prev_value["places"]:
+                new_value["places"].append(city_name)
+                new_value["places"] = list(set(new_value["places"]))
+                album_date.location = new_value
+        else:
+            album_date.location = {"places": [city_name]}
+        # Safe geolocation_json
+        album_date.save()
+
+    def _find_album_date(self):
+        old_album_date = None
+
+        if self.exif_timestamp:
+            possible_old_album_date = api.models.album_date.get_album_date(
+                date=self.exif_timestamp.date(), owner=self.owner
+            )
+
+            if (
+                possible_old_album_date is not None
+                and possible_old_album_date.photos.filter(
+                    image_hash=self.image_hash
+                ).exists
+            ):
+                old_album_date = possible_old_album_date
+        else:
+            possible_old_album_date = api.models.album_date.get_album_date(
+                date=None, owner=self.owner
+            )
+
+            if (
+                possible_old_album_date is not None
+                and possible_old_album_date.photos.filter(
+                    image_hash=self.image_hash
+                ).exists
+            ):
+                old_album_date = possible_old_album_date
+
+        return old_album_date
+
     def _extract_date_time_from_exif(self, commit=True):
         """Extract date time from photo EXIF data."""
 
@@ -160,8 +210,27 @@ class Photos(models.Model):
             self.timestamp,
         )
 
+        old_album_date = self._find_album_date()
+
         if self.exif_timestamp != extracted_local_time:
             self.exif_timestamp = extracted_local_time
+
+        if old_album_date is not None:
+            old_album_date.photos.remove(self)
+            old_album_date.save()
+
+        album_date = None
+
+        if self.exif_timestamp:
+            album_date = api.models.album_date.get_or_create_album_date(
+                date=self.exif_timestamp.date(), owner=self.owner
+            )
+            album_date.photos.add(self)
+        else:
+            album_date = api.models.album_date.get_or_create_album_date(
+                date=None, owner=self.owner
+            )
+            album_date.photos.add(self)
 
         if commit:
             self.save()
@@ -201,9 +270,9 @@ class Photos(models.Model):
         unknown_cluster: api.models.cluster.Cluster = (
             api.models.cluster.get_unknown_cluster(user=self.owner)
         )
-
         try:
             optimized_image = np.array(PIL.Image.open(self.optimized_image.path))
+
             face_locations = face_extractor.extract(
                 self.original_image.path, self.optimized_image.path, self.owner
             )
@@ -214,13 +283,11 @@ class Photos(models.Model):
             face_encodings = get_face_encodings(
                 self.optimized_image.path, known_face_locations=face_locations
             )
-
             for idx_face, face in enumerate(zip(face_encodings, face_locations)):
                 face_encoding = face[0]
                 face_location = face[1]
 
                 top, right, bottom, left, person_name = face_location
-
                 if person_name:
                     person = api.models.person.get_or_create_person(
                         name=person_name, owner=self.owner
@@ -260,36 +327,35 @@ class Photos(models.Model):
                     person=person,
                     cluster=unknown_cluster,
                 )
-
                 if person_name:
                     person._calculate_face_count()
                     person._set_default_cover_photo()
-
                 face_io = BytesIO()
                 face_image.save(face_io, format="JPEG")
-                face_image.save(image_path, ContentFile(face_io.getvalue()))
+                face.image.save(image_path, ContentFile(face_io.getvalue()))
                 face_io.close()
                 face.save()
-            logger.info("image %s: scanned %s faces", self, len(face_locations))
+            logger.info(
+                "image %s: %d face(s) saved", self.image_hash, len(face_locations)
+            )
         except IntegrityError:
-            # When using multiple processes, then we can save at the same time,
-            # which leads to this error
-            if self.original_image.path.exists():
-                # Print out the location of the image only if we have a path
+            # When using multiple processes, then we can save at the same time, which leads to this error
+            if self.files.count() > 0:
+                # print out the location of the image only if we have a path
                 logger.info("image %s: rescan face failed", self.original_image.path)
-
             if not second_try:
                 self._extract_faces(True)
             else:
-                if self.original_image.path.exists():
+                if self.files.count() > 0:
                     logger.error(
-                        "image %s: rescan face failed", self.original_image.path
+                        logger.info(
+                            "image %s: rescan face failed", self.original_image.path
+                        )
                     )
                 else:
                     logger.error("image %s: rescan face failed", self)
         except Exception as e:
             logger.error("image %s: scan face failed", self)
-
             raise e
 
     def _geolocate(self, commit=True):
@@ -330,14 +396,17 @@ class Photos(models.Model):
         try:
             image_path = self.optimized_image.path
             confidence = self.owner.confidence
-            json_to_use = {
+
+            json = {
                 "image_path": image_path,
                 "confidence": confidence,
             }
-
             res_places365 = requests.post(
-                "http://localhost:8011/generate-tags", json=json_to_use, timeout=120
+                "http://localhost:8011/generate-tags", json=json
             ).json()["tags"]
+
+            if res_places365 is None:
+                return
 
             if self.captions_json is None:
                 self.captions_json = {}

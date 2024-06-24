@@ -1,7 +1,11 @@
+"""Functions for parsing Mapbox location data."""
+
 from api.geocode import GEOCODE_VERSION
 
 
 def parse(location):
+    """Parses the location data into a GeoJSON object."""
+
     context = location.raw["context"]
     center = [location.raw["center"][1], location.raw["center"][0]]
     local_name = location.raw["text"]

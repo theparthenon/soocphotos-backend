@@ -1,3 +1,6 @@
+# pylint: disable=raise-missing-from
+"""Django manager integration for creating an user."""
+
 import os
 import sys
 
@@ -8,7 +11,9 @@ from api.models import User
 
 
 class Command(BaseCommand):
-    help = "Create a SOOC user"
+    """Django manager command."""
+
+    help = "Create a SoocPhotos user"
 
     def add_arguments(self, parser):
         parser.add_argument("username", help="Username to create")

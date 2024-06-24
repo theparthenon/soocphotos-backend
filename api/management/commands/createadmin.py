@@ -1,3 +1,6 @@
+# pylint: disable=raise-missing-from
+"""Django manager integration for creating an admin user."""
+
 import os
 import sys
 
@@ -8,7 +11,9 @@ from api.models import User
 
 
 class Command(BaseCommand):
-    help = "Create a LibrePhotos user with administrative permissions"
+    """Django manager command."""
+
+    help = "Create a SoocPhotos user with administrative permissions"
 
     def add_arguments(self, parser):
         parser.add_argument("admin_username", help="Username to create")

@@ -1,3 +1,6 @@
+# pylint: disable=W0108
+"""Functions for parsing TomTom location data."""
+
 from functools import reduce
 
 from api.geocode import GEOCODE_VERSION
@@ -16,6 +19,8 @@ def _dedup(iterable):
 
 
 def parse(location):
+    """Parses the location data into a GeoJSON object."""
+
     data = location.raw["address"]
     address = location.address
     center = list(map(lambda x: float(x), location.raw["position"].split(",")))

@@ -72,20 +72,12 @@ def start_service(service):
         bool: True if the service started successfully, False otherwise.
     """
 
-    if service == "image_similarity":
-        subprocess.Popen(
-            [
-                "python",
-                "image_similarity/main.py",
-                "2>&1 | tee /logs/image_similarity.log",
-            ]
-        )
-    elif service in SERVICES.keys():  # pylint: disable=consider-iterating-dictionary
+    if service in SERVICES.keys():  # pylint: disable=consider-iterating-dictionary
         subprocess.Popen(
             [
                 "python",
                 f"service/{service}/main.py",
-                "2>&1 | tee /logs/{service}.log",
+                "2>&1 | tee {settings.BASE_LOGS}/{service}.log",
             ]
         )
     else:

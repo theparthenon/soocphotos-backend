@@ -7,7 +7,6 @@ import subprocess
 import magic
 
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.http import (
     FileResponse,
     HttpResponse,
@@ -18,6 +17,7 @@ from django.db.models import Q
 from django.utils.encoding import iri_to_uri
 
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken
@@ -71,34 +71,20 @@ def gen(transcoder):
 
 
 class MediaAccessView(APIView):
-    """Controls access to protected media.
-
-    Args:
-        APIView (view): An APIView class.
-
-    Returns:
-        _type_: An HttpResponse class.
-    """
-
-    permission_classes = [AllowAny]
+    permission_classes = (AllowAny,)
 
     def _get_protected_media_url(self, path, fname):
-        return f"protected_media/{path}/{fname}"
+        return "protected_media/{}/{}".format(path, fname)
 
     # @silk_profile(name='media')
     def get(self, request, path, fname, format=None):
-        """
-        Controls access to protected media.
-        Args:
-            request: Request object.
-            path: Path to the media.
-            fname: File name.
-            format: Optional format parameter.
-        Returns:
-            An HttpResponse object.
-        """
-
         jwt = request.COOKIES.get("jwt")
+        image_hash = fname.split(".")[0].split("_")[0]
+
+        try:
+            photo = Photos.objects.get(image_hash=image_hash)
+        except Photos.DoesNotExist:
+            return HttpResponse(status=404)
 
         # forbid access if trouble with jwt
         if jwt is not None:
@@ -110,8 +96,10 @@ class MediaAccessView(APIView):
             return HttpResponseForbidden()
 
         # grant access if the user is owner of the requested photo
+        image_hash = fname.split(".")[0].split("_")[0]  # janky alert
         user = User.objects.filter(id=token["user_id"]).only("id").first()
-        if Photos.owner == user:
+
+        if photo.owner == user:
             response = HttpResponse()
             response["Content-Type"] = "image/jpeg"
             response["X-Accel-Redirect"] = self._get_protected_media_url(path, fname)
@@ -122,103 +110,97 @@ class MediaAccessView(APIView):
 
 
 class MediaAccessFullsizeOriginalView(APIView):
-    """Controls access to protected media.
-
-    Args:
-        APIView (view): An APIView class.
-
-    Raises:
-        Photos.DoesNotExist: If the photo does not exist.
-        Exception: If the photo is not owned by the user.
-
-    Returns:
-        _type_: An HttpResponse class.
-    """
-
     permission_classes = (AllowAny,)
 
     def _get_protected_media_url(self, path, fname):
-        return f"/protected_media{path}/{fname}"
+        return "/protected_media{}/{}".format(path, fname)
 
     def _generate_response(self, photo, path, fname, transcode_videos):
         if "thumbnail" in path:
             response = HttpResponse()
-            filename = os.path.splitext(Photos.thumbnail.path)[1]
-            if "jpg" in filename:
-                # handle non migrated systems
-                response["Content-Type"] = "image/jpg"
-                response["X-Accel-Redirect"] = Photos.optimized_image.path
+            filename = os.path.splitext(photo.thumbnail.path)[1]
+
             if "webp" in filename:
                 response["Content-Type"] = "image/webp"
                 response["X-Accel-Redirect"] = self._get_protected_media_url(
                     path, fname + ".webp"
                 )
+
             if "mp4" in filename:
                 response["Content-Type"] = "video/mp4"
                 response["X-Accel-Redirect"] = self._get_protected_media_url(
                     path, fname + ".mp4"
                 )
+
             return response
 
         if "faces" in path:
             response = HttpResponse()
             response["Content-Type"] = "image/jpg"
             response["X-Accel-Redirect"] = self._get_protected_media_url(path, fname)
+
             return response
 
-        if Photos.video:
+        if photo.video:
             # This is probably very slow -> Save the mime type when scanning
             mime = magic.Magic(mime=True)
-            filename = mime.from_file(Photos.original_image.path)
+            filename = mime.from_file(photo.original_image.path)
+
             if transcode_videos:
                 response = StreamingHttpResponse(
-                    gen(VideoTranscoder(Photos.original_image.path)),
+                    gen(VideoTranscoder(photo.original_image.path)),
                     content_type="video/mp4",
                 )
+
                 return response
-            else:
-                response = HttpResponse()
-                response["Content-Type"] = filename
-                response["X-Accel-Redirect"] = iri_to_uri(
-                    Photos.original_image.path.replace(settings.DATA_ROOT, "/original")
-                )
-                return response
+
+            response = HttpResponse()
+            response["Content-Type"] = filename
+            response["X-Accel-Redirect"] = iri_to_uri(
+                photo.original_image.path.replace(settings.DATA_ROOT, "/original")
+            )
+
+            return response
+
         # faces and avatars
         response = HttpResponse()
         response["Content-Type"] = "image/jpg"
         response["X-Accel-Redirect"] = self._get_protected_media_url(path, fname)
+
         return response
 
+    # @extend_schema(
+    #     description="Endpoint to load media files.",
+    #     parameters=[
+    #         OpenApiParameter(
+    #             name="path",
+    #             description="Kind of media file you want to load",
+    #             required=True,
+    #             type=OpenApiTypes.STR,
+    #             enum=[
+    #                 "thumbnails_big",
+    #                 "square_thumbnails",
+    #                 "small_square_thumbnails",
+    #                 "avatars",
+    #                 "photos",
+    #                 "faces",
+    #                 "embedded_media",
+    #             ],
+    #             location=OpenApiParameter.PATH,
+    #         ),
+    #         OpenApiParameter(
+    #             name="fname",
+    #             description="Usually the hash of the file. Faces have the format <hash>_<face_id>.jpg and avatars <first_name>avatar_<hash>.png",
+    #             required=True,
+    #             type=OpenApiTypes.STR,
+    #             location=OpenApiParameter.PATH,
+    #         ),
+    #     ],
+    # )
     def get(self, request, path, fname, format=None):
-        """
-        Retrieves a resource based on the provided path and file name.
-        Args:
-            request (HttpRequest): The HTTP request object.
-            path (str): The path of the resource.
-            fname (str): The file name of the resource.
-            format (str, optional): The format of the resource. Defaults to None.
-        Returns:
-            HttpResponse: The HTTP response object containing the requested resource.
-        Raises:
-            HttpResponseForbidden: If the user is not authenticated or the JWT token is
-            invalid.
-            HttpResponse: If the requested resource does not exist or the user does not
-            have permission to access it.
-        Notes:
-            - If the path is "zip", the function checks if the user is authenticated and
-              retrieves the corresponding zip file.
-            - If the path is "avatars", the function checks if the user is authenticated and
-              retrieves the corresponding avatar image.
-            - If the path is "embedded_media", the function checks if the user is authenticated
-              and retrieves the corresponding embedded media.
-            - If the path is not "photos", the function checks if the user is authenticated and
-              retrieves the corresponding resource.
-            - If the path is "photos", the function checks if the user is authenticated and
-              retrieves the corresponding original image.
-        """
-
         if path.lower() == "zip":
             jwt = request.COOKIES.get("jwt")
+
             if jwt is not None:
                 try:
                     token = AccessToken(jwt)
@@ -226,6 +208,7 @@ class MediaAccessFullsizeOriginalView(APIView):
                     return HttpResponseForbidden()
             else:
                 return HttpResponseForbidden()
+
             try:
                 filename = fname + str(token["user_id"]) + ".zip"
                 response = HttpResponse()
@@ -233,12 +216,14 @@ class MediaAccessFullsizeOriginalView(APIView):
                 response["X-Accel-Redirect"] = self._get_protected_media_url(
                     path, filename
                 )
+
                 return response
-            except PermissionDenied:
+            except Exception:
                 return HttpResponseForbidden()
 
         if path.lower() == "avatars":
             jwt = request.COOKIES.get("jwt")
+
             if jwt is not None:
                 try:
                     token = AccessToken(jwt)
@@ -246,19 +231,24 @@ class MediaAccessFullsizeOriginalView(APIView):
                     return HttpResponseForbidden()
             else:
                 return HttpResponseForbidden()
+
             try:
                 user = User.objects.filter(id=token["user_id"]).only("id").first()
                 response = HttpResponse()
                 response["Content-Type"] = "image/png"
                 response["X-Accel-Redirect"] = "/protected_media/" + path + "/" + fname
+
                 return response
-            except ObjectDoesNotExist:
+            except Exception:
                 return HttpResponse(status=404)
+
         if path.lower() == "embedded_media":
             jwt = request.COOKIES.get("jwt")
             query = Q(public=True)
+
             if request.user.is_authenticated:
                 query = Q(owner=request.user)
+
             if (
                 jwt is not None
             ):  # pragma: no cover, currently it's difficult to test requests with jwt in cookies
@@ -268,19 +258,25 @@ class MediaAccessFullsizeOriginalView(APIView):
                     query = Q(owner=user)
                 except TokenError:
                     pass
+
             try:
                 photo = Photos.objects.filter(query, image_hash=fname).first()
-                if not photo:
+
+                if not photo or photo.original_image.embedded_media.count() < 1:
                     raise Photos.DoesNotExist()
             except Photos.DoesNotExist:
                 return HttpResponse(status=404)
+
             response = HttpResponse()
             response["Content-Type"] = "video/mp4"
             response["X-Accel-Redirect"] = f"/protected_media/{path}/{fname}_1.mp4"
+
             return response
+
         if path.lower() != "photos":
             jwt = request.COOKIES.get("jwt")
             image_hash = fname.split(".")[0].split("_")[0]
+
             try:
                 photo = Photos.objects.get(image_hash=image_hash)
             except Photos.DoesNotExist:
@@ -296,14 +292,14 @@ class MediaAccessFullsizeOriginalView(APIView):
                 return HttpResponseForbidden()
 
             # grant access if the user is owner of the requested photo
-            # or the photo is shared with the user
             image_hash = fname.split(".")[0].split("_")[0]  # janky alert
             user = (
                 User.objects.filter(id=token["user_id"])
                 .only("id", "transcode_videos")
                 .first()
             )
-            if Photos.owner == user:
+
+            if photo.owner == user:
                 return self._generate_response(
                     photo, path, fname, user.transcode_videos
                 )
@@ -312,14 +308,15 @@ class MediaAccessFullsizeOriginalView(APIView):
         else:
             jwt = request.COOKIES.get("jwt")
             image_hash = fname.split(".")[0].split("_")[0]
+
             try:
                 photo = Photos.objects.get(image_hash=image_hash)
             except Photos.DoesNotExist:
                 return HttpResponse(status=404)
 
-            if Photos.original_image.path.startswith(settings.PHOTOS):
+            if photo.original_image.path.startswith(settings.PHOTOS):
                 internal_path = (
-                    "/original" + Photos.original_image.path[len(settings.PHOTOS) :]
+                    "/original" + photo.original_image.path[len(settings.PHOTOS) :]
                 )
             else:
                 # If, for some reason, the file is in a weird place, handle that.
@@ -337,34 +334,98 @@ class MediaAccessFullsizeOriginalView(APIView):
                 return HttpResponseForbidden()
 
             # grant access if the user is owner of the requested photo
-            # or the photo is shared with the user
             image_hash = fname.split(".")[0].split("_")[0]  # janky alert
             user = User.objects.filter(id=token["user_id"]).only("id").first()
 
             if internal_path is not None:
                 response = HttpResponse()
                 mime = magic.Magic(mime=True)
-                filename = mime.from_file(Photos.original_image.path)
+                filename = mime.from_file(photo.original_image.path)
                 response["Content-Type"] = filename
-                response["Content-Disposition"] = (
-                    f'inline; filename="{Photos.original_image.path.split("/")[-1]}"'
+                response["Content-Disposition"] = 'inline; filename="{}"'.format(
+                    photo.original_image.path.split("/")[-1]
                 )
                 response["X-Accel-Redirect"] = internal_path
             else:
                 try:
-                    response = FileResponse(open(Photos.original_image.path, "rb"))
+                    response = FileResponse(open(photo.original_image.path, "rb"))
                 except FileNotFoundError:
                     return HttpResponse(status=404)
                 except PermissionError:
                     return HttpResponse(status=403)
                 except IOError:
                     return HttpResponse(status=500)
-                except Exception as exc:
-                    raise Exception(  # pylint: disable=broad-exception-raised
-                        f"Could not generate response from original image: {exc}"
-                    ) from exc
+                except Exception:
+                    raise
 
-            if Photos.owner == user:
+            if photo.owner == user:
                 return response
 
             return HttpResponse(status=404)
+
+
+class StorageStatsView(APIView):
+    def get(self, request, format=None):
+        import shutil
+
+        total_storage, used_storage, free_storage = shutil.disk_usage(
+            settings.DATA_ROOT
+        )
+        return Response(
+            {
+                "total_storage": total_storage,
+                "used_storage": used_storage,
+                "free_storage": free_storage,
+            }
+        )
+
+
+class ImageTagView(APIView):
+    @method_decorator(cache_page(60 * 60 * 2))
+    def get(self, request, format=None):
+        # Add an exception for the directory '/code'
+        subprocess.run(
+            ["git", "config", "--global", "--add", "safe.directory", "/code"]
+        )
+
+        # Get the current commit hash
+        git_hash = (
+            subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+            .strip()
+            .decode("utf-8")
+        )
+        return Response(
+            {"image_tag": os.environ.get("IMAGE_TAG", ""), "git_hash": git_hash}
+        )
+
+
+class SearchTermExamples(APIView):
+    @method_decorator(vary_on_cookie)
+    @method_decorator(cache_page(60 * 60 * 2))
+    def get(self, request, format=None):
+        search_term_examples = get_search_term_examples(request.user)
+        return Response({"results": search_term_examples})
+
+
+class ScanPhotosView(APIView):
+    def post(self, request, format=None):
+        return self._scan_photos(request)
+
+    # Deprecated
+    def get(self, request, format=None):
+        return self._scan_photos(request)
+
+    def _scan_photos(self, request):
+        chain = Chain()
+        if not do_all_models_exist():
+            chain.append(download_models, request.user)
+        try:
+            job_id = uuid.uuid4()
+            chain.append(
+                scan_photos, request.user, False, job_id, request.user.scan_directory
+            )
+            chain.run()
+            return Response({"status": True, "job_id": job_id})
+        except BaseException:
+            logger.exception("An Error occurred")
+            return Response({"status": False})

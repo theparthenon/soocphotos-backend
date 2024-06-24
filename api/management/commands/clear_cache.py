@@ -1,3 +1,6 @@
+# pylint: disable=raise-missing-from
+"""Django manager integration for clearing the cache."""
+
 from django.conf import settings
 from django.core.cache import cache
 from django.core.management.base import BaseCommand, CommandError

@@ -1,7 +1,12 @@
+# pylint: disable=W1404
+"""Functions for parsing OpenCage location data."""
+
 from api.geocode import GEOCODE_VERSION
 
 
 def parse(location):
+    """Parses the location data into a GeoJSON object."""
+
     data = location.raw["components"]
     center = [location.raw["geometry"]["lat"], location.raw["geometry"]["lng"]]
     props = [

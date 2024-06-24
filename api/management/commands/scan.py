@@ -1,3 +1,5 @@
+"""Django manager integration for scanning the directory."""
+
 import uuid
 
 from django.conf import settings
@@ -9,6 +11,8 @@ from api.models.user import get_deleted_user
 
 
 class Command(BaseCommand):
+    """Django manager command."""
+
     help = "scan directory for all users"
 
     def add_arguments(self, parser):

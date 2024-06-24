@@ -98,7 +98,6 @@ class Person(models.Model):
                         "exif_timestamp",
                         "rating",
                         "owner__id",
-                        "public",
                         "hidden",
                     )
                     .prefetch_related("owner"),

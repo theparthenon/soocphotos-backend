@@ -11,4 +11,4 @@ class ListViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     `.serializer_class` attributes.
     """
 
-    pass
+    pass  # pylint: disable=unnecessary-pass

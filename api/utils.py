@@ -74,14 +74,14 @@ def get_metadata(media_file, tags, try_sidecar=True, struct=False):
         media_file, try_sidecar
     )
 
-    metadata_json = {
+    json = {
         "tags": tags,
         "files_by_reverse_priority": files_by_reverse_priority,
         "struct": struct,
     }
 
     response = requests.post(
-        "http://localhost:8010/get-tags", json=metadata_json, timeout=120
+        "http://localhost:8010/get-tags", json=json, timeout=120
     ).json()
 
     return response["values"]
@@ -94,7 +94,7 @@ def write_metadata(media_file, tags, use_sidecar=True):
     terminate_et = False
 
     if not et.running:
-        et.run()
+        et.start()
         terminate_et = True
 
     # TODO: Replace with new File Structure

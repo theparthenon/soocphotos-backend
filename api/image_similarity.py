@@ -1,15 +1,18 @@
 """Compares images and returns similar ones."""
 
 from datetime import datetime
+import logging.handlers
 
-import requests
-
-from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import Q
 
+from api.retrieval_index import RetrievalIndex
+
 from api.models import Photos
-from api.utils import logger
+
+logger = logging.getLogger("image_similarity")
+
+index = RetrievalIndex()
 
 
 def search_similar_images(user, photo, threshold=27):
@@ -20,16 +23,12 @@ def search_similar_images(user, photo, threshold=27):
     else:
         user_id = user.id
 
-    post_data = {"user_id": user_id, "threshold": threshold}
+    try:
+        res = index.search_similar(user_id=user_id, thres=threshold, in_embedding=[])
 
-    res = requests.post(
-        settings.IMAGE_SIMILARITY_SERVER + "/search/", json=post_data, timeout=120
-    )
-
-    if res.status_code == 200:
-        return res.json()
-    else:
-        logger.error(
+        return res
+    except Exception:  # pylint: disable=broad-except
+        logger.exception(
             "Error retrieving similar photos to %s belonging to user %s.",
             photo.image_hash,
             user.username,
@@ -58,11 +57,9 @@ def build_image_similarity_index(user):
 
     logger.info("Building similarity index for user %s", user.username)
 
-    requests.delete(
-        settings.IMAGE_SIMILARITY_SERVER + "/build/",
-        json={"user_id": user.id},
-        timeout=120,
-    )
+    if user.id in index.indices:
+        del index.indices[user.id]
+        del index.image_hashes[user.id]
 
     start = datetime.now()
     photos = (
@@ -79,10 +76,8 @@ def build_image_similarity_index(user):
         for photo in paginator.page(page).object_list:
             image_hashes.append(photo.image_hash)
 
-        post_data = {"user_id": user.id, "image_hashes": image_hashes}
-
-        requests.post(
-            settings.IMAGE_SIMILARITY_SERVER + "/build/", json=post_data, timeout=120
+        index.build_index_for_user(
+            user_id=user.id, image_hashes=image_hashes, image_embeddings=[]
         )
 
     elapsed_time = (datetime.now() - start).total_seconds()

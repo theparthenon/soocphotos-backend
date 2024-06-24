@@ -1,8 +1,11 @@
 """Generate prompt for LLM model."""
 
-import requests
+import logging.handlers
 
 from django.conf import settings
+import requests
+
+logger = logging.getLogger("llm")
 
 
 def generate_prompt(prompt):
@@ -20,9 +23,7 @@ def generate_prompt(prompt):
         "max_tokens": 64,
         "prompt": prompt,
     }
-    caption_response = requests.post(
-        "http://localhost:8008/", json=json, timeout=120
-    ).json()  # TODO: integrate into Django
+    caption_response = requests.post("http://localhost:8008/", json=json).json()
 
     print(caption_response)
 

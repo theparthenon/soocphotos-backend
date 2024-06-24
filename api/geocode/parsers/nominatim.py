@@ -1,7 +1,11 @@
+"""Functions for parsing Nominatim location data."""
+
 from api.geocode import GEOCODE_VERSION
 
 
 def parse(location):
+    """Parses the location data into a GeoJSON object."""
+
     data = location.raw["address"]
     props = [
         "road",
