@@ -70,7 +70,9 @@ pillow==10.3.0
 platformdirs==4.2.2
 portalocker==2.8.2
 protobuf==5.27.1
+psutil==6.0.0
 psycopg==3.1.19
+py-cpuinfo==9.0.0
 pycparser==2.22
 PyExifTool==0.4.9
 PyJWT==2.8.0
