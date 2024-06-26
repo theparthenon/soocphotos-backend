@@ -13,12 +13,14 @@ from api.mixins.list_view_mixin import ListViewSet
 from api.mixins.pagination_mixin import (
     HugeResultsSetPagination,
     RegularResultsSetPagination,
+    StandardResultsSetPagination,
 )
 from api.mixins.permissions_mixin import IsOwnerOrReadOnly
 from api.models import Photos
 from api.models.user import User
 from api.serializers.photos import (
     PhotoDetailsSummarySerializer,
+    PhotoEditSerializer,
     PhotosSerializer,
     PhotoSummarySerializer,
 )
@@ -78,6 +80,24 @@ class PhotosViewSet(ModelViewSet):
 
     def list(self, *args, **kwargs):  # pylint: disable=useless-parent-delegation
         return super(PhotosViewSet, self).list(*args, **kwargs)
+
+
+class PhotoEditViewSet(ModelViewSet):
+    serializer_class = PhotoEditSerializer
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        return Photos.visible.filter(Q(owner=self.request.user))
+
+    def retrieve(
+        self, *args, **kwargs
+    ):  # pragma: no cover TODO(sickelap): remove unused code
+        return super(PhotoEditViewSet, self).retrieve(*args, **kwargs)
+
+    def list(
+        self, *args, **kwargs
+    ):  # pragma: no cover TODO(sickelap): remove unused code
+        return super(PhotoEditViewSet, self).list(*args, **kwargs)
 
 
 class RecentlyAddedPhotosViewSet(ListViewSet):
@@ -319,3 +339,88 @@ class SetPhotosHidden(APIView):
                 "not_updated": not_updated,
             }
         )
+
+
+class GeneratePhotoCaption(APIView):
+    permission_classes = (IsOwnerOrReadOnly,)
+
+    def post(self, request, format=None):
+        data = dict(request.data)
+        image_hash = data["image_hash"]
+
+        photo = Photos.objects.get(image_hash=image_hash)
+
+        if photo.owner != request.user:
+            return Response(
+                {"status": False, "message": "you are not the owner of this photo"},
+                status=400,
+            )
+
+        res = photo._generate_captions_im2txt()
+
+        return Response({"status": res})
+
+
+class SavePhotoCaption(APIView):
+    permission_classes = (IsOwnerOrReadOnly,)
+
+    def post(self, request, format=None):
+        data = dict(request.data)
+        image_hash = data["image_hash"]
+        caption = data["caption"]
+
+        photo = Photos.objects.get(image_hash=image_hash)
+
+        if photo.owner != request.user:
+            return Response(
+                {"status": False, "message": "you are not the owner of this photo"},
+                status=400,
+            )
+
+        res = photo._save_captions(caption=caption)
+
+        return Response({"status": res})
+
+
+class DeletePhotos(APIView):
+    def delete(self, request):
+        data = dict(request.data)
+        photos = Photos.objects.in_bulk(data["image_hashes"])
+
+        deleted = []
+        not_deleted = []
+
+        for photo in photos.values():
+            if photo.owner == request.user and photo.deleted:
+                deleted.append(photo.image_hash)
+                photo.manual_delete()
+            else:
+                not_deleted.append(photo.image_hash)
+
+        return Response(
+            {
+                "status": True,
+                "results": deleted,
+                "not_deleted": not_deleted,
+                "deleted": deleted,
+            }
+        )
+
+
+class DeleteDuplicatePhotos(APIView):
+    def delete(self, request):
+        data = dict(request.data)
+        logger.info(data)
+        photo = Photos.objects.filter(image_hash=data["image_hash"]).first()
+        duplicate_path = data["path"]
+
+        if not photo:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        result = photo.delete_duplicate(duplicate_path)
+
+        # TODO: Give a better response, when it's a bad request
+        if result:
+            return Response(status=status.HTTP_200_OK)
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST)

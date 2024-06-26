@@ -209,6 +209,29 @@ class PhotosSerializer(serializers.ModelSerializer):
         ]
 
 
+class PhotoEditSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Photos
+        fields = (
+            "image_hash",
+            "hidden",
+            "rating",
+            "deleted",
+            "video",
+            "exif_timestamp",
+            "timestamp",
+        )
+
+    def update(self, instance, validated_data):
+        # photo can only update the following
+        if "exif_timestamp" in validated_data:
+            instance.timestamp = validated_data.pop("exif_timestamp")
+            instance.save()
+            instance._extract_date_time_from_exif()
+
+        return instance
+
+
 class PhotoSummarySerializer(serializers.ModelSerializer):
     """Photo summary serializer."""
 

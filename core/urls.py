@@ -6,65 +6,25 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, re_path
 from rest_framework import permissions, routers
-from rest_framework_simplejwt.serializers import (
-    TokenObtainPairSerializer,
-    TokenRefreshSerializer,
-)
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 
 from api.views import (
+    authentication,
     album_date,
     album_place,
     album_thing,
+    dataviz,
     faces,
+    jobs,
     misc_views,
     person,
     photos,
+    search,
+    services,
     upload,
     user,
 )
-
-
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """Serializer class to get a token pair for authentication."""
-
-    @classmethod
-    def get_token(cls, user):
-        token = super(TokenObtainPairSerializer, cls).get_token(user)
-
-        token["name"] = user.get_username()
-        token["is_admin"] = user.is_superuser
-        token["first_name"] = user.first_name
-        token["last_name"] = user.last_name
-        token["confidence"] = user.confidence
-
-        return token
-
-
-class CustomTokenObtainPairView(TokenObtainPairView):
-    """View class to get a token pair for authentication."""
-
-    serializer_class = CustomTokenObtainPairSerializer
-
-    def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        response.set_cookie("jwt", response.data["access"])
-        response["Access-Control-Allow-Credentials"] = "true"
-        return response
-
-
-class CustomTokenRefreshView(TokenRefreshView):
-    """View class to refresh a token pair."""
-
-    serializer_class = TokenRefreshSerializer
-
-    def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        response.set_cookie("jwt", response.data["access"])
-        response["Access-Control-Allow-Credentials"] = "true"
-        return response
 
 
 schema_view = get_schema_view(
@@ -116,7 +76,13 @@ router.register(
     r"api/faces/incomplete", faces.FaceIncompleteListView, basename="faces_incomplete"
 )
 
+router.register(r"api/jobs", jobs.JobViewSet, basename="jobs")
+
 router.register(r"api/people", person.PersonViewSet, basename="people")
+
+router.register(r"api/photos", photos.PhotosViewSet, basename="photos")
+
+router.register(r"api/photos/edit", photos.PhotoEditViewSet, basename="photos_edit")
 
 router.register(
     r"api/photos/exists", upload.UploadPhotoExists, basename="photos_exists"
@@ -128,30 +94,76 @@ router.register(
     basename="photos_recently_added",
 )
 
+routers.register(
+    r"api/photos/search-list", search.SearchListViewSet, basename="photos_search"
+)
+
 router.register(
     r"api/photos/without-timestamp",
     photos.PhotosWithoutTimestampViewSet,
     basename="photos_without_timestamp",
 )
 
+router.register(r"api/services", services.ServiceViewSet, basename="services")
+
 router.register(r"api/user", user.UserViewSet, basename="user")
+
 router.register(r"api/user/manage", user.ManageUserViewSet, basename="user_manage")
+
 router.register(r"api/user/delete", user.DeleteUserViewSet, basename="user_delete")
 
 
 urlpatterns = [
     re_path(r"^", include(router.urls)),
     re_path(r"^api/django-admin/", admin.site.urls),
-    re_path(r"^api/auth/token/obtain/$", CustomTokenObtainPairView.as_view()),
-    re_path(r"^api/auth/token/refresh/$", CustomTokenRefreshView.as_view()),
     re_path(
-        r"^api/faces/label/", faces.SetFacePersonLabel.as_view(), name="faces_label"
+        r"^api/auth/token/obtain/$", authentication.CustomTokenObtainPairView.as_view()
     ),
-    re_path(r"^api/faces/delete/", faces.DeleteFaces.as_view(), name="faces_delete"),
-    re_path(r"^api/faces/scan/", faces.ScanFacesView.as_view(), name="faces_scan"),
-    re_path(r"^api/faces/train/", faces.TrainFaceView.as_view(), name="faces_train"),
+    re_path(
+        r"^api/auth/token/refresh/$", authentication.CustomTokenRefreshView.as_view()
+    ),
+    re_path(
+        r"^api/delete/zip/(?P<fname>.*)",
+        misc_views.DeleteZipView.as_view(),
+        name="delete-zip",
+    ),
+    re_path(r"^api/faces/cluster", faces.ClusterFaceView.as_view()),
+    re_path(r"^api/faces/delete", faces.DeleteFaces.as_view(), name="faces_delete"),
+    re_path(
+        r"^api/faces/label", faces.SetFacePersonLabel.as_view(), name="faces_label"
+    ),
+    re_path(r"^api/faces/scan", faces.ScanFacesView.as_view(), name="faces_scan"),
+    re_path(r"^api/faces/train", faces.TrainFaceView.as_view(), name="faces_train"),
+    re_path(r"^api/location/sunburst", dataviz.LocationSunburst.as_view()),
+    re_path(r"^api/location/timeline", dataviz.LocationTimeline.as_view()),
+    re_path(r"^api/photos/download$", misc_views.ZipListPhotosView_V2.as_view()),
+    re_path(r"^api/photos/edit/delete", photos.DeletePhotos.as_view()),
+    re_path(
+        r"^api/photos/edit/delete/duplicates", photos.DeleteDuplicatePhotos.as_view()
+    ),
+    re_path(
+        r"^api/photos/edit/delete/missing", misc_views.DeleteMissingPhotosView.as_view()
+    ),
+    re_path(r"^api/photos/edit/favorite", photos.SetPhotosFavorite.as_view()),
+    re_path(r"^api/photos/edit/hide", photos.SetPhotosHidden.as_view()),
+    re_path(
+        r"^api/photos/edit/caption/generate", photos.GeneratePhotoCaption.as_view()
+    ),
+    re_path(r"^api/photos/edit/caption/save", photos.SavePhotoCaption.as_view()),
+    re_path(r"^api/photos/edit/set-deleted", photos.SetPhotosDeleted.as_view()),
+    re_path(r"^api/photos/month-counts", dataviz.PhotoMonthCountsView.as_view()),
+    re_path(r"^api/rq-available/$", jobs.QueueAvailabilityView.as_view()),
+    # re_path(r"^api/settings/site", misc_views.SiteSettingsView.as_view()),
+    re_path(r"^api/scan/photos", misc_views.ScanPhotosView.as_view()),
+    re_path(r"^api/scan/photos/uploaded", misc_views.FullScanPhotosView.as_view()),
+    re_path(r"^api/scan/photos/full", misc_views.FullScanPhotosView.as_view()),
+    re_path(r"^api/search-term-examples", misc_views.SearchTermExamples.as_view()),
+    re_path(r"^api/stats", dataviz.StatsView.as_view()),
+    re_path(r"^api/stats/server", dataviz.ServerStatsView.as_view()),
+    re_path(r"^api/stats/storage", misc_views.StorageStatsView.as_view()),
     re_path(r"^api/upload/", upload.UploadPhotosChunked.as_view()),
     re_path(r"^api/upload/complete/", upload.UploadPhotosChunkedComplete.as_view()),
+    re_path(r"^api/word-cloud", dataviz.SearchTermWordCloudView.as_view()),
     re_path(
         r"^media/(?P<path>.*)/(?P<fname>.*)",
         misc_views.MediaAccessFullsizeOriginalView.as_view(),

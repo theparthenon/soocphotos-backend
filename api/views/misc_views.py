@@ -15,7 +15,7 @@ from django.http import (
     HttpResponseForbidden,
     StreamingHttpResponse,
 )
-from django.db.models import Q
+from django.db.models import Sum, Q
 from django.utils.decorators import method_decorator
 from django.utils.encoding import iri_to_uri
 from django.views.decorators.cache import cache_page
@@ -28,9 +28,10 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken
 
+from api.all_tasks import create_download_job, delete_missing_photos, delete_zip_file
 from api.directory_watcher import scan_photos
 from api.ml_models import do_all_models_exist, download_models
-from api.models import Photos, User
+from api.models import Job, Photos, User
 from api.utils import logger
 
 
@@ -438,3 +439,135 @@ class ScanPhotosView(APIView):
         except BaseException:
             logger.exception("An Error occurred")
             return Response({"status": False})
+
+
+class FullScanPhotosView(APIView):
+    def post(self, request, format=None):
+        return self._scan_photos(request)
+
+    def get(self, request, format=None):
+        return self._scan_photos(request)
+
+    def _scan_photos(self, request):
+        chain = Chain()
+
+        if not do_all_models_exist():
+            chain.append(download_models, request.user)
+
+        try:
+            job_id = uuid.uuid4()
+            chain.append(
+                scan_photos, request.user, True, job_id, request.user.scan_directory
+            )
+            chain.run()
+
+            return Response({"status": True, "job_id": job_id})
+
+        except BaseException as e:
+            logger.exception("An Error occurred: %s", e)
+
+            return Response({"status": False})
+
+
+class DeleteMissingPhotosView(APIView):
+    def post(self, request, format=None):
+        return self._delete_missing_photos(request, format)
+
+    def get(self, request, format=None):
+        return self._delete_missing_photos(request, format)
+
+    def _delete_missing_photos(self, request, format=None):
+        try:
+            job_id = uuid.uuid4()
+            delete_missing_photos(request.user, job_id)
+
+            return Response({"status": True, "job_id": job_id})
+        except BaseException:
+            logger.exception("An Error occurred")
+
+            return Response({"status": False})
+
+
+class ZipListPhotosView_V2(APIView):
+    def post(self, request):
+        import shutil
+
+        free_storage = shutil.disk_usage("/").free
+        data = dict(request.data)
+
+        if "image_hashes" not in data:
+            return
+
+        photo_query = Photos.objects.filter(owner=self.request.user)
+        # Filter photos based on image hashes
+        photos = photo_query.filter(image_hash__in=data["image_hashes"])
+
+        if not photos.exists():
+            return
+
+        # Calculate the total file size using aggregate
+        total_file_size = photos.aggregate(Sum("size"))["size__sum"] or 0
+        if free_storage < total_file_size:
+            return Response(data={"status": "Insufficient Storage"}, status=507)
+
+        file_uuid = uuid.uuid4()
+        filename = str(str(file_uuid) + str(self.request.user.id) + ".zip")
+
+        job_id = create_download_job(
+            Job.JOB_DOWNLOAD_PHOTOS,
+            user=self.request.user,
+            photos=list(photos),
+            filename=filename,
+        )
+        response = {"job_id": job_id, "url": file_uuid}
+
+        return Response(data=response, status=200)
+
+    def get(self, request):
+        job_id = request.GET["job_id"]
+        print(job_id)
+
+        if job_id is None:
+            return Response(status=404)
+
+        try:
+            job = Job.objects.get(job_id=job_id)
+
+            if job.finished:
+                return Response(data={"status": "SUCCESS"}, status=200)
+            elif job.failed:
+                return Response(
+                    data={"status": "FAILURE", "result": job.result}, status=500
+                )
+            else:
+                return Response(
+                    data={"status": "PENDING", "progress": job.result}, status=202
+                )
+        except BaseException as e:
+            logger.error(str(e))
+
+            return Response(status=404)
+
+
+class DeleteZipView(APIView):
+    def delete(self, request, fname):
+        jwt = request.COOKIES.get("jwt")
+
+        if jwt is not None:
+            try:
+                token = AccessToken(jwt)
+            except TokenError:
+                return HttpResponseForbidden()
+        else:
+            return HttpResponseForbidden()
+
+        filename = fname + str(token["user_id"]) + ".zip"
+
+        try:
+            delete_zip_file(filename)
+
+            return Response(status=200)
+        except BaseException as e:
+            logger.error(str(e))
+
+            return Response(status=404)

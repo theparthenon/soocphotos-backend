@@ -2,7 +2,6 @@
 
 import os
 import datetime
-from pathlib import Path
 from concurrent_log_handler.queue import setup_logging_queues
 
 #################################################
@@ -12,10 +11,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE_LOGS = os.environ.get("BASE_LOGS", "/logs/")
 BASE_DATA = os.environ.get("BASE_DATA", "/")
 CONSUME_DIR = os.environ.get("CONSUME_DIR", os.path.join(BASE_DATA, "consume"))
+DATA_ROOT = os.environ.get("DATA_ROOT", os.path.join(BASE_DATA, "data"))
 MEDIA_ROOT = os.path.join(BASE_DATA, "protected_media")
+PHOTOS = os.environ.get("PHOTOS", os.path.join(BASE_DATA, "originals"))
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
-PHOTOS = os.environ.get("PHOTOS", os.path.join(MEDIA_ROOT, "originals"))
-DATA_ROOT = PHOTOS
 UPLOAD_ROOT = os.environ.get("UPLOADS", os.path.join(MEDIA_ROOT, "uploads"))
 IM2TXT_ROOT = os.path.join(MEDIA_ROOT, "data_models", "im2txt")
 IM2TXT_ONNX_ROOT = os.path.join(MEDIA_ROOT, "data_models", "im2txt_onnx")
@@ -62,6 +61,8 @@ if not SECRET_KEY:
 DEBUG = os.environ.get("DEBUG", "True")
 
 ALLOWED_HOSTS = ["localhost", os.environ.get("BACKEND_HOST", "backend")]
+
+INTERNAL_IPS = ["127.0.0.1", "localhost"]
 
 AUTH_USER_MODEL = "api.User"
 
@@ -147,6 +148,8 @@ DATABASES = {
         "PASSWORD": os.environ.get("DB_PASS", "AaAa1234"),
         "HOST": os.environ.get("DB_HOST", "localhost"),
         "PORT": os.environ.get("DB_PORT", "5432"),
+        "CONN_MAX_AGE": 600,
+        "CONN_HEALTH_CHECKS": True,
     }
 }
 
@@ -376,7 +379,7 @@ CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOWED_ORIGINS = ["http://127.0.0.1:3000"]
+CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
 
 if os.environ.get("CORS_ALLOWED_ORIGINS"):
     CORS_ALLOWED_ORIGINS.append(os.environ.get("CORS_ALLOWED_ORIGINS"))
@@ -385,7 +388,8 @@ if os.environ.get("CORS_ALLOWED_ORIGINS"):
 # CSRF                                          #
 #################################################
 
-CSRF_TRUSTED_ORIGINS = ["http://127.0.0.1:3000"]
+CSRF_TRUSTED_ORIGINS = ["http://localhost:3000"]
+
 if os.environ.get("CSRF_TRUSTED_ORIGINS"):
     CSRF_TRUSTED_ORIGINS.append(os.environ.get("CSRF_TRUSTED_ORIGINS"))
 
@@ -394,3 +398,11 @@ if os.environ.get("CSRF_TRUSTED_ORIGINS"):
 #################################################
 
 TAGGIT_CASE_INSENSITIVE = True
+
+#################################################
+# Chunked Upload                                #
+#################################################
+
+CHUNKED_UPLOAD_PATH = ""
+
+CHUNKED_UPLOAD_TO = os.path.join("chunked_uploads")

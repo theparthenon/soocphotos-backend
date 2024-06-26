@@ -7,7 +7,7 @@ from django_q.tasks import AsyncTask, Chain
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.face_classify import cluster_all_faces
+from api.face_classify import cluster_all_faces, cluster_faces
 from api.ml_models import do_all_models_exist, download_models
 from api.models import Face
 from api.models.person import Person, get_or_create_person
@@ -20,6 +20,20 @@ from api.utils import logger
 from api.utils_face import scan_faces
 from api.mixins.list_view_mixin import ListViewSet
 from api.mixins.pagination_mixin import RegularResultsSetPagination
+
+
+class ClusterFaceView(APIView):
+    # Deprecated
+    def get(self, request, format=None):
+        return self._cluster_faces(request.user)
+
+    def post(self, request, format=None):
+        return self._cluster_faces(request.user)
+
+    def _cluster_faces(self, user):
+        res = cluster_faces(user)
+
+        return Response(res)
 
 
 class ScanFacesView(APIView):
