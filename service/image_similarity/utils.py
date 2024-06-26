@@ -4,10 +4,8 @@ import logging
 import logging.handlers
 import os
 import os.path
-from pathlib import Path
 
-PROJ_DIR = Path(__file__).resolve().parent.parent.parent  # soocphotos
-BASE_LOGS = os.environ.get("BASE_LOGS", os.path.join(PROJ_DIR, "logs"))
+BASE_LOGS = os.environ.get("BASE_LOGS", "/logs/")
 
 logger = logging.getLogger("image_similarity")
 formatter = logging.Formatter(
