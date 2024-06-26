@@ -94,7 +94,7 @@ router.register(
     basename="photos_recently_added",
 )
 
-routers.register(
+router.register(
     r"api/photos/search-list", search.SearchListViewSet, basename="photos_search"
 )
 
