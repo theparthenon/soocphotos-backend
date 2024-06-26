@@ -4,7 +4,9 @@
 import os
 from urllib.parse import quote
 import subprocess
+from api.utils_api import get_search_term_examples
 import magic
+import uuid
 
 from django.conf import settings
 from django.http import (
@@ -14,7 +16,11 @@ from django.http import (
     StreamingHttpResponse,
 )
 from django.db.models import Q
+from django.utils.decorators import method_decorator
 from django.utils.encoding import iri_to_uri
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_cookie
+from django_q.tasks import AsyncTask, Chain
 
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -22,7 +28,10 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken
 
+from api.directory_watcher import scan_photos
+from api.ml_models import do_all_models_exist, download_models
 from api.models import Photos, User
+from api.utils import logger
 
 
 class VideoTranscoder:
