@@ -4,27 +4,23 @@ import os
 import datetime
 from pathlib import Path
 from concurrent_log_handler.queue import setup_logging_queues
-from dotenv import load_dotenv
-
-PROJ_DIR = Path(__file__).resolve().parent.parent.parent  # soocphotos
-
-load_dotenv(PROJ_DIR / "backend.env")
 
 #################################################
 # Directories                                   #
 #################################################
-BASE_DIR = Path(__file__).resolve().parent.parent  # Backend
-BASE_DATA = os.environ.get("BASE_DATA", os.path.join(PROJ_DIR, "data"))
-BASE_LOGS = os.environ.get("BASE_LOGS", os.path.join(PROJ_DIR, "logs"))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_LOGS = os.environ.get("BASE_LOGS", "/logs/")
+BASE_DATA = os.environ.get("BASE_DATA", "/")
 CONSUME_DIR = os.environ.get("CONSUME_DIR", os.path.join(BASE_DATA, "consume"))
 MEDIA_ROOT = os.path.join(BASE_DATA, "protected_media")
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
-PHOTOS = os.environ.get("PHOTOS", os.path.join(MEDIA_ROOT, "originals"))
+PHOTOS = os.environ.get("PHOTOS", os.path.join(BASE_DATA, "data"))
 UPLOAD_ROOT = os.environ.get("UPLOADS", os.path.join(MEDIA_ROOT, "uploads"))
 IM2TXT_ROOT = os.path.join(MEDIA_ROOT, "data_models", "im2txt")
 IM2TXT_ONNX_ROOT = os.path.join(MEDIA_ROOT, "data_models", "im2txt_onnx")
 BLIP_ROOT = os.path.join(MEDIA_ROOT, "data_models", "blip")
 PLACES365_ROOT = os.path.join(MEDIA_ROOT, "data_models", "places365", "model")
+LOGS_ROOT = BASE_LOGS
 
 #################################################
 # URLs                                          #
@@ -40,9 +36,27 @@ ROOT_URLCONF = "core.urls"
 # Security                                      #
 #################################################
 
-SECRET_KEY = os.environ.get(
-    "SECRET_KEY", "django-insecure-zume=%y)lf7#w=#n9i29p*9tt=9lqg06cavej*#s9_lq+*p#6#"
-)
+SECRET_KEY_FILENAME = os.path.join(BASE_LOGS, "secret.key")
+SECRET_KEY = ""
+
+if os.environ.get("SECRET_KEY"):
+    SECRET_KEY = os.environ["SECRET_KEY"]
+    print("using SECRET_KEY from env")
+
+if not SECRET_KEY and os.path.exists(SECRET_KEY_FILENAME):
+    with open(SECRET_KEY_FILENAME, "r") as f:
+        SECRET_KEY = f.read().strip()
+        print("using SECRET_KEY from file")
+
+if not SECRET_KEY:
+    from django.core.management.utils import get_random_secret_key
+
+    with open(SECRET_KEY_FILENAME, "w") as f:
+        f.write(get_random_secret_key())
+        print("generating SECRET_KEY and saving to file")
+    with open(SECRET_KEY_FILENAME, "r") as f:
+        SECRET_KEY = f.read().strip()
+        print("using SECRET_KEY from file")
 
 DEBUG = os.environ.get("DEBUG", "True")
 
