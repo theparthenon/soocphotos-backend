@@ -38,7 +38,7 @@ class PhotosViewSet(ModelViewSet):
         "search_location",
         "faces__person__name",
         "exif_timestamp",
-        "main_file__path",
+        "original_image__path",
     ]
 
     @action(

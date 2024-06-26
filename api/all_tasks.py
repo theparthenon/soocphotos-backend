@@ -60,7 +60,7 @@ def zip_photos_task(job_id, user, photos, filename):
 
         for photo in photos:
             done_count = done_count + 1
-            photo_name = os.path.basename(photo.main_file.path)
+            photo_name = os.path.basename(photo.original_image.path)
 
             if photo_name in photos_name:
                 photos_name[photo_name] = photos_name[photo_name] + 1
@@ -69,7 +69,7 @@ def zip_photos_task(job_id, user, photos, filename):
                 photos_name[photo_name] = 1
 
             with zipfile.ZipFile(mf, mode="a", compression=zipfile.ZIP_DEFLATED) as zf:
-                zf.write(photo.main_file.path, arcname=photo_name)
+                zf.write(photo.original_image.path, arcname=photo_name)
 
             lrj.result = {"progress": {"current": done_count, "target": count}}
             lrj.save()
@@ -106,7 +106,7 @@ def delete_missing_photos(user, job_id):
         lrj.save()
     try:
         missing_photos = Photos.objects.filter(
-            Q(owner=user) & Q(files=None) | Q(main_file=None)
+            Q(owner=user) & Q(files=None) | Q(original_image=None)
         )
         for missing_photo in missing_photos:
             album_dates = AlbumDate.objects.filter(photos=missing_photo)

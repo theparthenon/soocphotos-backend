@@ -39,7 +39,7 @@ def generate_captions(overwrite=False):
         photos = Photos.objects.filter(search_captions=None)
     logger.info("%d photos to be processed for caption generation", photos.count())
     for photo in photos:
-        logger.info("generating captions for %s", photo.main_file.path)
+        logger.info("generating captions for %s", photo.original_image.path)
         photo._generate_captions()
         photo.save()
 
@@ -72,7 +72,7 @@ def geolocate(overwrite=False):
     logger.info("%d photos to be geolocated", photos.count())
     for photo in photos:
         try:
-            logger.info("geolocating %s", photo.main_file.path)
+            logger.info("geolocating %s", photo.original_image.path)
             photo._geolocate()
             photo._add_location_to_album_dates()
         except ValueError:
