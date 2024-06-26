@@ -4,27 +4,23 @@ import os
 import datetime
 from pathlib import Path
 from concurrent_log_handler.queue import setup_logging_queues
-from dotenv import load_dotenv
-
-PROJ_DIR = Path(__file__).resolve().parent.parent.parent  # soocphotos
-
-load_dotenv(PROJ_DIR / "backend.env")
 
 #################################################
 # Directories                                   #
 #################################################
-BASE_DIR = Path(__file__).resolve().parent.parent  # Backend
-BASE_DATA = os.environ.get("BASE_DATA", os.path.join(PROJ_DIR, "data"))
-BASE_LOGS = os.environ.get("BASE_LOGS", os.path.join(PROJ_DIR, "logs"))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_LOGS = os.environ.get("BASE_LOGS", "/logs/")
+BASE_DATA = os.environ.get("BASE_DATA", "/")
 CONSUME_DIR = os.environ.get("CONSUME_DIR", os.path.join(BASE_DATA, "consume"))
 MEDIA_ROOT = os.path.join(BASE_DATA, "protected_media")
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
-PHOTOS = os.environ.get("PHOTOS", os.path.join(MEDIA_ROOT, "originals"))
+PHOTOS = os.environ.get("PHOTOS", os.path.join(BASE_DATA, "data"))
 UPLOAD_ROOT = os.environ.get("UPLOADS", os.path.join(MEDIA_ROOT, "uploads"))
 IM2TXT_ROOT = os.path.join(MEDIA_ROOT, "data_models", "im2txt")
 IM2TXT_ONNX_ROOT = os.path.join(MEDIA_ROOT, "data_models", "im2txt_onnx")
 BLIP_ROOT = os.path.join(MEDIA_ROOT, "data_models", "blip")
 PLACES365_ROOT = os.path.join(MEDIA_ROOT, "data_models", "places365", "model")
+LOGS_ROOT = BASE_LOGS
 
 #################################################
 # URLs                                          #
