@@ -3,6 +3,7 @@
 import os
 import datetime
 from concurrent_log_handler.queue import setup_logging_queues
+import sentry_sdk
 
 #################################################
 # Directories                                   #
@@ -31,6 +32,21 @@ MEDIA_URL = "/media/"
 STATIC_URL = "api/static/"
 
 ROOT_URLCONF = "core.urls"
+
+#################################################
+# Sentry                                        #
+#################################################
+
+sentry_sdk.init(
+    dsn="https://8988bb27a8348cb75cff3d3500453d99@o4507504124624896.ingest.us.sentry.io/4507504198942720",
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for performance monitoring.
+    traces_sample_rate=1.0,
+    # Set profiles_sample_rate to 1.0 to profile 100%
+    # of sampled transactions.
+    # We recommend adjusting this value in production.
+    profiles_sample_rate=1.0,
+)
 
 #################################################
 # Security                                      #
@@ -206,6 +222,7 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    "EXCEPTION_HANDLER": "api.mixins.exception_handler_mixin.custom_exception_handler",
     "PAGE_SIZE": 20000,
 }
 
@@ -375,7 +392,10 @@ CORS_ALLOW_HEADERS = (
     "x-requested-with",
 )
 
-CORS_ALLOW_ALL_ORIGINS = False
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOW_CREDENTIALS = True
 

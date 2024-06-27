@@ -39,6 +39,7 @@ class UploadPhotoExists(viewsets.ViewSet):
             return Response({"exists": False})
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class UploadPhotosChunked(ChunkedUploadView):
     """Upload chunked segments of a photo."""
 
@@ -147,7 +148,7 @@ class UploadPhotosChunkedComplete(ChunkedUploadCompleteView):
                 if existing_photo_hash == image_hash:
                     # File already exists, do not copy it to the upload folder.
                     logger.info(
-                        "Photo %s duplicated with has %s.",
+                        "Photo %s duplicated with hash %s.",
                         filename,
                         image_hash,
                     )

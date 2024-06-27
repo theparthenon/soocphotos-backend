@@ -19,9 +19,17 @@ from api.serializers.photos import PhotoSummarySerializer
 
 
 class AlbumDateViewSet(viewsets.ModelViewSet):
-    serializer_class = AlbumDateSerializer
     pagination_class = RegularResultsSetPagination
     permission_classes = [IsAuthenticated]
+    filter_backends = (filters.SearchFilter,)
+    search_fields = [
+        "photos__search_captions",
+        "photos__search_location",
+        "photos__faces__person__name",
+    ]
+
+    def get_serializer_class(self):
+        return AlbumDateSerializer
 
     def get_queryset(self):
         photo_filter = []
@@ -107,31 +115,7 @@ class AlbumDateViewSet(viewsets.ModelViewSet):
 
         return album_date, photos, paginator.count
 
-    def retrieve(self, *args, **kwargs):
-        album_date, photos, count = self.get_queryset()
-        serializer = AlbumDateSerializer(album_date, context={"request": self.request})
-        serializer_data = serializer.data
-        serializer_data["items"] = PhotoSummarySerializer(
-            photos, many=True
-        ).data  # Assuming you have a PhotoSerializer
-        serializer_data["number_of_items"] = count
-
-        return Response({"results": serializer_data})
-
-
-# TODO: This could be the summary command in AlbumDateViewSet
-class AlbumDateListViewSet(ListViewSet):
-    serializer_class = IncompleteAlbumDateSerializer
-    pagination_class = None
-    filter_backends = (filters.SearchFilter,)
-    search_fields = [
-        "photos__search_captions",
-        "photos__search_location",
-        "photos__faces__person__name",
-    ]
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
+    def get_list_queryset(self):
         filter = []
 
         if self.request.query_params.get("hidden"):
@@ -180,5 +164,82 @@ class AlbumDateListViewSet(ListViewSet):
         return qs
 
     def list(self, *args, **kwargs):
-        serializer = IncompleteAlbumDateSerializer(self.get_queryset(), many=True)
+        serializer = IncompleteAlbumDateSerializer(self.get_list_queryset(), many=True)
+
         return Response({"results": serializer.data})
+
+    def retrieve(self, *args, **kwargs):
+        album_date, photos, count = self.get_queryset()
+        serializer = AlbumDateSerializer(album_date, context={"request": self.request})
+        serializer_data = serializer.data
+        serializer_data["items"] = PhotoSummarySerializer(
+            photos, many=True
+        ).data  # Assuming you have a PhotoSerializer
+        serializer_data["number_of_items"] = count
+
+        return Response({"results": serializer_data})
+
+
+# # TODO: This could be the summary command in AlbumDateViewSet
+# class AlbumDateListViewSet(ListViewSet):
+#     serializer_class = IncompleteAlbumDateSerializer
+#     pagination_class = None
+#     filter_backends = (filters.SearchFilter,)
+#     search_fields = [
+#         "photos__search_captions",
+#         "photos__search_location",
+#         "photos__faces__person__name",
+#     ]
+#     permission_classes = [IsAuthenticated]
+
+#     def get_queryset(self):
+#         filter = []
+
+#         if self.request.query_params.get("hidden"):
+#             filter.append(Q(photos__hidden=True))
+#         else:
+#             filter.append(Q(photos__hidden=False))
+
+#         if self.request.query_params.get("deleted"):
+#             filter.append(Q(photos__deleted=True))
+#         else:
+#             filter.append(Q(photos__deleted=False))
+
+#         if not self.request.user.is_anonymous:
+#             filter.append(Q(owner=self.request.user))
+#             filter.append(Q(photos__owner=self.request.user))
+
+#         if self.request.query_params.get("favorite"):
+#             min_rating = self.request.user.favorite_min_rating
+#             filter.append(Q(photos__rating__gte=min_rating))
+
+#         if self.request.query_params.get("video"):
+#             filter.append(Q(photos__video=True))
+
+#         if self.request.query_params.get("photo"):
+#             filter.append(Q(photos__video=False))
+
+#         if self.request.query_params.get("person"):
+#             filter.append(
+#                 Q(photos__faces__person__id=self.request.query_params.get("person"))
+#             )
+#             filter.append(
+#                 Q(
+#                     photos__faces__person_label_probability__gte=F(
+#                         "photos__faces__photo__owner__confidence_person"
+#                     )
+#                 )
+#             )
+
+#         qs = (
+#             AlbumDate.objects.filter(*filter)
+#             .annotate(photo_count=Count("photos", distinct=True))
+#             .filter(Q(photo_count__gt=0))
+#             .order_by(F("date").desc(nulls_last=True))
+#         )
+
+#         return qs
+
+#     def list(self, *args, **kwargs):
+#         serializer = IncompleteAlbumDateSerializer(self.get_queryset(), many=True)
+#         return Response({"results": serializer.data})

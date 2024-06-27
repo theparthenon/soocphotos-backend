@@ -60,21 +60,21 @@ class AlbumThingViewSet(viewsets.ModelViewSet):
         return Response({"results": serializer.data})
 
 
-class AlbumThingListViewSet(ListViewSet):
-    serializer_class = AlbumThingListSerializer
-    pagination_class = StandardResultsSetPagination
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ["title"]
+# class AlbumThingListViewSet(ListViewSet):
+#     serializer_class = AlbumThingListSerializer
+#     pagination_class = StandardResultsSetPagination
+#     filter_backends = (filters.SearchFilter,)
+#     search_fields = ["title"]
 
-    def get_queryset(self):
-        if self.request.user.is_anonymous:
-            return AlbumThing.objects.none()
+#     def get_queryset(self):
+#         if self.request.user.is_anonymous:
+#             return AlbumThing.objects.none()
 
-        queryset = (
-            AlbumThing.objects.filter(owner=self.request.user)
-            .prefetch_related("cover_photos")
-            .filter(photo_count__gt=0)
-            .order_by("-title")
-        )
+#         queryset = (
+#             AlbumThing.objects.filter(owner=self.request.user)
+#             .prefetch_related("cover_photos")
+#             .filter(photo_count__gt=0)
+#             .order_by("-title")
+#         )
 
-        return queryset
+#         return queryset

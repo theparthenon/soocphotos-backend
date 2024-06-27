@@ -639,7 +639,7 @@ def get_count_stats(user):
         .count()
     )
     num_albumuser = (
-        Albums.objects.filter(owner=user)
+        Albums.objects.all()
         .annotate(photo_count=Count("photos"))
         .filter(Q(photo_count__gt=0))
         .count()

@@ -14,6 +14,7 @@ from api.views import (
     album_date,
     album_place,
     album_thing,
+    albums,
     dataviz,
     faces,
     jobs,
@@ -22,6 +23,7 @@ from api.views import (
     photos,
     search,
     services,
+    timezone,
     upload,
     user,
 )
@@ -40,35 +42,39 @@ schema_view = get_schema_view(
 
 router = routers.DefaultRouter()
 
-router.register(r"api/albums/date", album_date.AlbumDateViewSet, basename="album_date")
+router.register(r"api/albums", albums.AlbumViewSet, basename="albums")
+
+# router.register(r"api/albums/list", albums.AlbumViewSet, basename="albums_list")
+
+router.register(r"api/album/date", album_date.AlbumDateViewSet, basename="album_date")
+
+# router.register(
+#     r"api/albums/date/list", album_date.AlbumDateListViewSet, basename="album_date_list"
+# )
 
 router.register(
-    r"api/albums/date/list", album_date.AlbumDateListViewSet, basename="album_date_list"
+    r"api/album/people", person.AlbumPersonViewSet, basename="album_people"
 )
 
 router.register(
-    r"api/albums/people", person.AlbumPersonViewSet, basename="album_people"
+    r"api/album/place", album_place.AlbumPlaceViewSet, basename="album_place"
 )
 
-router.register(
-    r"api/albums/place", album_place.AlbumPlaceViewSet, basename="album_place"
-)
+# router.register(
+#     r"api/album/place/list",
+#     album_place.AlbumPlaceListViewSet,
+#     basename="album_place_list",
+# )
 
 router.register(
-    r"api/albums/place/list",
-    album_place.AlbumPlaceListViewSet,
-    basename="album_place_list",
+    r"api/album/thing", album_thing.AlbumThingViewSet, basename="album_thing"
 )
 
-router.register(
-    r"api/albums/thing", album_thing.AlbumThingViewSet, basename="album_thing"
-)
-
-router.register(
-    r"api/albums/thing/list",
-    album_thing.AlbumThingListViewSet,
-    basename="album_thing_list",
-)
+# router.register(
+#     r"api/album/thing/list",
+#     album_thing.AlbumThingListViewSet,
+#     basename="album_thing_list",
+# )
 
 router.register(r"api/faces", faces.FaceListView, basename="faces")
 
@@ -152,7 +158,9 @@ urlpatterns = [
     re_path(r"^api/photos/edit/caption/save", photos.SavePhotoCaption.as_view()),
     re_path(r"^api/photos/edit/set-deleted", photos.SetPhotosDeleted.as_view()),
     re_path(r"^api/photos/month-counts", dataviz.PhotoMonthCountsView.as_view()),
-    re_path(r"^api/rq-available/$", jobs.QueueAvailabilityView.as_view()),
+    re_path(r"^api/queue-availability/$", jobs.QueueAvailabilityView.as_view()),
+    re_path(r"^api/rules/default", user.DefaultRulesView.as_view()),
+    re_path(r"^api/rules/predefined", user.PredefinedRulesView.as_view()),
     # re_path(r"^api/settings/site", misc_views.SiteSettingsView.as_view()),
     re_path(r"^api/scan/photos", misc_views.ScanPhotosView.as_view()),
     re_path(r"^api/scan/photos/uploaded", misc_views.FullScanPhotosView.as_view()),
@@ -161,6 +169,7 @@ urlpatterns = [
     re_path(r"^api/stats", dataviz.StatsView.as_view()),
     re_path(r"^api/stats/server", dataviz.ServerStatsView.as_view()),
     re_path(r"^api/stats/storage", misc_views.StorageStatsView.as_view()),
+    re_path(r"^api/timezones", timezone.TimeZoneView.as_view()),
     re_path(r"^api/upload/", upload.UploadPhotosChunked.as_view()),
     re_path(r"^api/upload/complete/", upload.UploadPhotosChunkedComplete.as_view()),
     re_path(r"^api/word-cloud", dataviz.SearchTermWordCloudView.as_view()),
