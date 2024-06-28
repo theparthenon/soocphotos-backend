@@ -7,7 +7,9 @@ import subprocess
 from api.utils_api import get_search_term_examples
 import magic
 import uuid
+import jsonschema
 
+from constance import config as site_config
 from django.conf import settings
 from django.http import (
     FileResponse,
@@ -22,7 +24,7 @@ from django.views.decorators.cache import cache_page
 from django.views.decorators.vary import vary_on_cookie
 from django_q.tasks import AsyncTask, Chain
 
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
@@ -32,7 +34,53 @@ from api.all_tasks import create_download_job, delete_missing_photos, delete_zip
 from api.directory_watcher import scan_photos
 from api.ml_models import do_all_models_exist, download_models
 from api.models import Job, Photos, User
+from api.schemas.site_settings import site_settings_schema
 from api.utils import logger
+
+
+class SiteSettingsView(APIView):
+    def get_permissions(self):
+        if self.request.method == "GET":
+            self.permission_classes = (AllowAny,)
+        else:
+            self.permission_classes = (IsAdminUser,)
+
+        return super(SiteSettingsView, self).get_permissions()
+
+    def get(self, request, format=None):
+        out = {}
+        out["allow_registration"] = site_config.ALLOW_REGISTRATION
+        out["allow_upload"] = site_config.ALLOW_UPLOAD
+        out["skip_patterns"] = site_config.SKIP_PATTERNS
+        out["heavyweight_process"] = site_config.HEAVYWEIGHT_PROCESS
+        out["map_api_provider"] = site_config.MAP_API_PROVIDER
+        out["map_api_key"] = site_config.MAP_API_KEY
+        out["captioning_model"] = site_config.CAPTIONING_MODEL
+        out["llm_model"] = site_config.LLM_MODEL
+        return Response(out)
+
+    def post(self, request, format=None):
+        jsonschema.validate(request.data, site_settings_schema)
+        if "allow_registration" in request.data.keys():
+            site_config.ALLOW_REGISTRATION = request.data["allow_registration"]
+        if "allow_upload" in request.data.keys():
+            site_config.ALLOW_UPLOAD = request.data["allow_upload"]
+        if "skip_patterns" in request.data.keys():
+            site_config.SKIP_PATTERNS = request.data["skip_patterns"]
+        if "heavyweight_process" in request.data.keys():
+            site_config.HEAVYWEIGHT_PROCESS = request.data["heavyweight_process"]
+        if "map_api_provider" in request.data.keys():
+            site_config.MAP_API_PROVIDER = request.data["map_api_provider"]
+        if "map_api_key" in request.data.keys():
+            site_config.MAP_API_KEY = request.data["map_api_key"]
+        if "captioning_model" in request.data.keys():
+            site_config.CAPTIONING_MODEL = request.data["captioning_model"]
+        if "llm_model" in request.data.keys():
+            site_config.LLM_MODEL = request.data["llm_model"]
+        if not do_all_models_exist():
+            AsyncTask(download_models, User.objects.get(id=request.user)).run()
+
+        return self.get(request, format=format)
 
 
 class VideoTranscoder:

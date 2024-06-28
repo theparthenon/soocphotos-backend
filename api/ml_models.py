@@ -10,6 +10,7 @@ from pathlib import Path
 import pytz
 import requests
 
+from constance import config as site_config
 from django.conf import settings
 
 from api.models.job import Job
@@ -100,7 +101,7 @@ def download_model(model):
     model = model.copy()
     if model["type"] == MlTypes.LLM:
         logger.info("Downloading LLM model")
-        model_to_download = settings.LLM_MODEL
+        model_to_download = site_config.LLM_MODEL
         if not model_to_download and model_to_download != "none":
             logger.info("No LLM model selected")
             return
@@ -111,7 +112,7 @@ def download_model(model):
                 model = ml_model
     if model["type"] == MlTypes.CAPTIONING:
         logger.info("Downloading captioning model")
-        model_to_download = settings.CAPTIONING_MODEL
+        model_to_download = site_config.CAPTIONING_MODEL
         logger.info("Model to download: %s", model_to_download)
         # Look through ML_MODELS and find the model with the name
         for ml_model in ML_MODELS:

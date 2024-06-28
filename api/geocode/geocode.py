@@ -2,7 +2,7 @@
 
 import geopy
 
-from django.conf import settings
+from constance import config as site_config
 
 from api.utils import logger
 from .config import get_provider_config, get_provider_parser
@@ -38,7 +38,7 @@ def reverse_geocode(lat: float, lon: float) -> dict:
     """Reverse geocodes a location using the provided latitude and longitude."""
 
     try:
-        return Geocode(settings.MAP_API_PROVIDER).reverse(lat, lon)
+        return Geocode(site_config.MAP_API_PROVIDER).reverse(lat, lon)
     except Exception as e:  # pylint: disable=broad-except
         logger.warning("Error while reverse geocoding: %s", e)
         return {}

@@ -2,7 +2,7 @@
 
 import logging.handlers
 
-from django.conf import settings
+from constance import config as site_config
 import requests
 
 logger = logging.getLogger("llm")
@@ -11,11 +11,11 @@ logger = logging.getLogger("llm")
 def generate_prompt(prompt):
     """Generate prompt for LLM model."""
 
-    if settings.LLM_MODEL == "none":
+    if site_config.LLM_MODEL == "none":
         return None
-    if settings.LLM_MODEL == "mistral-7b-v0.1.Q5_K_M":
+    if site_config.LLM_MODEL == "mistral-7b-v0.1.Q5_K_M":
         model_path = "/protected_media/data_models/mistral-7b-v0.1.Q5_K_M.gguf"
-    if settings.LLM_MODEL == "mistral-7b-instruct-v0.2.Q5_K_M":
+    if site_config.LLM_MODEL == "mistral-7b-instruct-v0.2.Q5_K_M":
         model_path = "/protected_media/data_models/mistral-7b-instruct-v0.2.Q5_K_M.gguf"
 
     json = {

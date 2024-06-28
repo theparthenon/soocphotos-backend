@@ -5,9 +5,10 @@ import datetime
 import os
 import stat
 import uuid
-from typing import Optional
+from typing import List, Optional
 
 import pytz
+from constance import config as site_config
 from django import db
 from django.conf import settings
 from django.core.paginator import Paginator
@@ -30,10 +31,10 @@ from api.utils import (
 def should_skip(path):
     """Decides if the path should be skipped."""
 
-    if not settings.SKIP_PATTERNS:
+    if not site_config.SKIP_PATTERNS:
         return False
 
-    skip_patterns = settings.SKIP_PATTERNS
+    skip_patterns = site_config.SKIP_PATTERNS
     skip_list = skip_patterns.split(",")
     skip_list = map(str.strip, skip_list)
 
@@ -303,41 +304,40 @@ def photo_scanner(user, last_scan, full_scan, path, job_id):
 
 
 def scan_directory(
-    directory: str = None, ignored_items: tuple = None, wanted_extensions: tuple = None
-) -> str:
+    directory: Optional[str] = None,
+    ignored_items: Optional[tuple] = None,
+    wanted_extensions: Optional[tuple] = None,
+) -> List[str]:
     """Scans the given directory and returns a list of all wanted files."""
 
     all_images = []
 
-    if directory is None:
-        directory = "."
+    directory = directory or "."
 
-    if ignored_items is None:
-        ignored_items = (
-            ".git",
-            ".idea",
-            "venv",
-            "__pycache__",
-        )
+    ignored_items = ignored_items or (
+        ".git",
+        ".idea",
+        "venv",
+        "__pycache__",
+    )
 
-    if wanted_extensions is None:
-        wanted_extensions = (
-            "jpg",
-            "jpeg",
-            "png",
-            "gif",
-            "heif",
-            "heic",
-            "bmp",
-            "tiff",
-            "webp",
-            "mov",
-            "mp4",
-            "avi",
-            "webm",
-            "mkv",
-            "m4v",
-        )
+    wanted_extensions = wanted_extensions or (
+        "jpg",
+        "jpeg",
+        "png",
+        "gif",
+        "heif",
+        "heic",
+        "bmp",
+        "tiff",
+        "webp",
+        "mov",
+        "mp4",
+        "avi",
+        "webm",
+        "mkv",
+        "m4v",
+    )
 
     for root, dirs, files in os.walk(directory):  # pylint: disable=unused-variable
         if any(ignore_item in root for ignore_item in ignored_items):
@@ -347,14 +347,20 @@ def scan_directory(
             if any(ignore_item in file for ignore_item in ignored_items):
                 continue
 
-            file_ext = file.split(".")[1].lower()
+            file_extension = os.path.splitext(file)[1].lower()[1:]
 
-            if file_ext not in wanted_extensions:
+            if file_extension not in wanted_extensions:
                 continue
 
             file_path = os.path.join(root, file)
 
-            all_images.append(file_path)
+            try:
+                with open(file_path, "rb"):
+                    all_images.append(file_path)
+            except FileNotFoundError:
+                logger.warning("File %s was not found", file_path)
+            except PermissionError:
+                logger.warning("Permission denied for file %s", file_path)
 
     return all_images
 

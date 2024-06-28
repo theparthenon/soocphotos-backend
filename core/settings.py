@@ -14,7 +14,7 @@ BASE_DATA = os.environ.get("BASE_DATA", "/")
 CONSUME_DIR = os.environ.get("CONSUME_DIR", os.path.join(BASE_DATA, "consume"))
 DATA_ROOT = os.environ.get("DATA_ROOT", os.path.join(BASE_DATA, "data"))
 MEDIA_ROOT = os.path.join(BASE_DATA, "protected_media")
-PHOTOS = os.environ.get("PHOTOS", os.path.join(BASE_DATA, "originals"))
+PHOTOS = os.environ.get("PHOTOS", os.path.join(BASE_DATA, "data"))
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
 UPLOAD_ROOT = os.environ.get("UPLOADS", os.path.join(MEDIA_ROOT, "uploads"))
 IM2TXT_ROOT = os.path.join(MEDIA_ROOT, "data_models", "im2txt")
@@ -107,6 +107,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "api",
     "chunked_upload",
+    "constance",
     "corsheaders",
     "django_extensions",
     "django_filters",
@@ -198,17 +199,17 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 DEFAULT_FAVORITE_MIN_RATING = os.environ.get("DEFAULT_FAVORITE_MIN_RATING", 4)
 
-LLM_MODEL = os.environ.get("LLM_MODEL", "mistral-7b-v0.1.Q5_K_M")
+# LLM_MODEL = os.environ.get("LLM_MODEL", "mistral-7b-v0.1.Q5_K_M")
 
-CAPTIONING_MODEL = os.environ.get("CAPTIONING_MODEL", "im2txt")
+# CAPTIONING_MODEL = os.environ.get("CAPTIONING_MODEL", "im2txt")
 
-MAP_API_PROVIDER = os.environ.get("MAP_API_PROVIDER", "photon")
+# MAP_API_PROVIDER = os.environ.get("MAP_API_PROVIDER", "photon")
 
-MAP_API_KEY = os.environ.get("MAP_API_KEY", "")
+# MAP_API_KEY = os.environ.get("MAP_API_KEY", "")
 
-SKIP_PATTERNS = os.environ.get("SKIP_PATTERNS", ".")
+# SKIP_PATTERNS = os.environ.get("SKIP_PATTERNS", ".")
 
-ALLOW_UPLOAD = os.environ.get("ALLOW_UPLOAD", "True")
+# ALLOW_UPLOAD = os.environ.get("ALLOW_UPLOAD", "True")
 
 #################################################
 # Rest Framework                                #
@@ -359,6 +360,81 @@ HEAVYWEIGHT_PROCESS_ENV = os.environ.get("HEAVYWEIGHT_PROCESS", "1")
 HEAVYWEIGHT_PROCESS = (
     int(HEAVYWEIGHT_PROCESS_ENV) if HEAVYWEIGHT_PROCESS_ENV.isnumeric() else 1
 )
+
+#################################################
+# Constance                                     #
+#################################################
+
+CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
+CONSTANCE_ADDITIONAL_FIELDS = {
+    "map_api_provider": [
+        "django.forms.fields.ChoiceField",
+        {
+            "widget": "django.forms.Select",
+            "choices": (
+                ("mapbox", "Mapbox"),
+                ("maptiler", "MapTiler"),
+                ("nominatim", "Nominatim (OpenStreetMap)"),
+                ("opencage", "OpenCage"),
+                ("photon", "Photon"),
+                ("tomtom", "TomTom"),
+            ),
+        },
+    ],
+    "captioning_model": [
+        "django.forms.fields.ChoiceField",
+        {
+            "widget": "django.forms.Select",
+            "choices": (
+                ("none", "None"),
+                ("im2txt", "im2txt PyTorch Model"),
+                ("im2txt_onnx", "im2txt ONNX Model"),
+                ("blip_base_capfilt_large", "BLIP Model"),
+            ),
+        },
+    ],
+    "llm_model": [
+        "django.forms.fields.ChoiceField",
+        {
+            "widget": "django.forms.Select",
+            "choices": (
+                ("none", "None"),
+                ("mistral-7b-v0.1.Q5_K_M", "Mistral 7B v0.1 Q5 K M"),
+                ("mistral-7b-instruct-v0.2.Q5_K_M", "Mistral 7B Instruct v0.2 Q5 K M"),
+            ),
+        },
+    ],
+}
+CONSTANCE_CONFIG = {
+    "ALLOW_REGISTRATION": (False, "Publicly allow user registration", bool),
+    "ALLOW_UPLOAD": (
+        os.environ.get("ALLOW_UPLOAD", "True") not in ("false", "False", "0", "f"),
+        "Allow uploading files",
+        bool,
+    ),
+    "SKIP_PATTERNS": (
+        os.environ.get("SKIP_PATTERNS", ""),
+        "Comma delimited list of patterns to ignore (e.g. '@eaDir,#recycle' for synology devices)",
+        str,
+    ),
+    "HEAVYWEIGHT_PROCESS": (
+        HEAVYWEIGHT_PROCESS,
+        """
+        Number of workers, when scanning pictures. This setting can dramatically affect the ram usage.
+        Each worker needs 800MB of RAM. Change at your own will. Default is 1.
+        """,
+        int,
+    ),
+    "MAP_API_PROVIDER": (
+        os.environ.get("MAP_API_PROVIDER", "photon"),
+        "Map Provider",
+        "map_api_provider",
+    ),
+    "MAP_API_KEY": (os.environ.get("MAPBOX_API_KEY", ""), "Map Box API Key", str),
+    "IMAGE_DIRS": ("/data", "Image dirs list (serialized json)", str),
+    "CAPTIONING_MODEL": ("im2txt", "Captioning model", "captioning_model"),
+    "LLM_MODEL": ("None", "Large Language Model", "llm_model"),
+}
 
 #################################################
 # Q_Cluster                                     #

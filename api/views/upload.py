@@ -8,7 +8,7 @@ from chunked_upload.constants import http_status
 from chunked_upload.exceptions import ChunkedUploadError
 from chunked_upload.models import ChunkedUpload
 from chunked_upload.views import ChunkedUploadCompleteView, ChunkedUploadView
-from django.conf import settings
+from constance import config as site_config
 from django.core.files.base import ContentFile
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404
@@ -46,7 +46,7 @@ class UploadPhotosChunked(ChunkedUploadView):
     model = ChunkedUpload
 
     def check_permissions(self, request):
-        if not settings.ALLOW_UPLOAD:
+        if not site_config.ALLOW_UPLOAD:
             logger.info("Uploads are not allowed.")
 
             return HttpResponseForbidden()
@@ -95,7 +95,7 @@ class UploadPhotosChunkedComplete(ChunkedUploadCompleteView):
     model = ChunkedUpload
 
     def check_permissions(self, request):
-        if not settings.ALLOW_UPLOAD:
+        if not site_config.ALLOW_UPLOAD:
             logger.info("Uploads are not allowed.")
 
             return HttpResponseForbidden()

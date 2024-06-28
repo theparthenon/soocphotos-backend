@@ -459,19 +459,18 @@ class Photos(models.Model):
         current_user = User.objects.get(username=self.owner)
 
         try:
-            if current_user.captions_model == "NONE":
-                logger.info("Generating captions is disabled.")
+            from constance import config as site_config
 
+            if site_config.CAPTIONING_MODEL == "None":
+                logger.info("Generating captions is disabled")
                 return False
 
             onnx = False
-
-            if current_user.captions_model == "IM2TXT_ONNX":
+            if site_config.CAPTIONING_MODEL == "im2txt_onnx":
                 onnx = True
 
             blip = False
-
-            if current_user.captions_model == "BLIP":
+            if site_config.CAPTIONING_MODEL == "blip_base_capfilt_large":
                 blip = True
 
             caption = generate_caption(image_path=image_path, blip=blip, onnx=onnx)
@@ -479,7 +478,7 @@ class Photos(models.Model):
 
             llm_settings = current_user.llm_settings
 
-            if llm_settings["enabled"]:
+            if site_config.LLM_MODEL != "None" and llm_settings["enabled"]:
                 face = api.models.face.Face.objects.filter(photo=self).first()
                 person_name = ""
 
@@ -519,7 +518,7 @@ class Photos(models.Model):
             logger.info(
                 "Generated im2txt captions for image %s with SiteConfig %s with Blip: %s and Onnx: %s caption: %s",  # pylint: disable=line-too-long
                 image_path,
-                current_user.captions_model,
+                site_config.CAPTIONING_MODEL,
                 blip,
                 onnx,
                 caption,
