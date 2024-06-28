@@ -3,6 +3,7 @@
 
 import datetime
 import os
+import shutil
 import stat
 import uuid
 from typing import List, Optional
@@ -297,8 +298,8 @@ def photo_scanner(user, last_scan, full_scan, path, job_id):
         old_path = path
         photo_name = os.path.splitext(os.path.basename(path))[0]
         photo_ext = os.path.splitext(os.path.basename(path))[1]
-        new_path = os.path.join(settings.PHOTOS, photo_name + photo_ext)
-        os.rename(old_path, new_path)
+        new_path = os.path.join(settings.MEDIA_ROOT, "originals", photo_name + photo_ext)
+        shutil.copy(old_path, new_path)
 
         AsyncTask(handle_new_image, user, new_path, job_id).run()
 
