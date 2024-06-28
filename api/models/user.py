@@ -49,6 +49,7 @@ class User(AbstractUser):
         choices=[(x, x) for x in pytz.all_timezones],
         default="UTC",
     )
+    scan_directory = models.CharField(max_length=512, db_index=True)
 
     class FaceRecogniton(models.TextChoices):
         """Options for facial recognition model."""

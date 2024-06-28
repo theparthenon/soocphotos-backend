@@ -15,5 +15,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token["first_name"] = user.first_name
         token["last_name"] = user.last_name
         token["confidence"] = user.confidence
+        token["scan_directory"] = user.scan_directory
 
         return token

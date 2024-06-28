@@ -388,7 +388,7 @@ def scan_photos(
 
     try:
         if scan_dir == "":
-            scan_dir = settings.CONSUME_DIR
+            scan_dir = user.scan_directory
 
         print("Scanning directory:", scan_dir)
 

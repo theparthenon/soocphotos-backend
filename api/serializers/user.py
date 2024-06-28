@@ -22,9 +22,11 @@ class UserSerializer(serializers.ModelSerializer):
             "password": {"write_only": True},
             "first_name": {"required": False},
             "last_name": {"required": False},
+            "scan_directory": {"required": False},
             "confidence": {"required": False},
             "confidence_person": {"required": False},
             "favorite_min_rating": {"required": False},
+            "save_metadata_to_disk": {"required": False},
         }
         fields = [
             "id",
@@ -32,7 +34,9 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
+            "scan_directory",
             "photo_count",
+            "avatar",
             "avatar_url",
             "password",
             "confidence",
@@ -47,87 +51,108 @@ class UserSerializer(serializers.ModelSerializer):
             "confidence_unknown_face",
             "min_samples",
             "cluster_selection_epsilon",
+            "save_metadata_to_disk",
+            "datetime_rules",
+            "default_timezone",
         ]
 
     def update(self, instance, validated_data):
         # user can only update the following
         if "password" in validated_data:
             password = validated_data.pop("password")
+
             if password != "":
                 instance.set_password(password)
+
         if "avatar" in validated_data:
             instance.avatar = validated_data.pop("avatar")
             instance.save()
+
         if "email" in validated_data:
             instance.email = validated_data.pop("email")
             instance.save()
+
         if "first_name" in validated_data:
             instance.first_name = validated_data.pop("first_name")
             instance.save()
+
         if "last_name" in validated_data:
             instance.last_name = validated_data.pop("last_name")
             instance.save()
+
         if "transcode_videos" in validated_data:
             instance.transcode_videos = validated_data.pop("transcode_videos")
             instance.save()
+
         if "confidence" in validated_data:
             instance.confidence = validated_data.pop("confidence")
             instance.save()
-            logger.info("Updated confidence for user %d", instance.confidence)
+            logger.info("Updated confidence for user to: %d", instance.confidence)
+
         if "confidence_person" in validated_data:
             instance.confidence_person = validated_data.pop("confidence_person")
             instance.save()
             logger.info(
-                "Updated person album confidence for user %s",
+                "Updated person album confidence for user to: %s",
                 instance.confidence_person,
             )
+
         if "favorite_min_rating" in validated_data:
             new_favorite_min_rating = validated_data.pop("favorite_min_rating")
             instance.favorite_min_rating = new_favorite_min_rating
             instance.save()
             logger.info(
-                "Updated favorite_min_rating for user %s", instance.favorite_min_rating
+                "Updated favorite_min_rating for user to: %s", instance.favorite_min_rating
             )
+
         if "save_metadata_to_disk" in validated_data:
             instance.save_metadata_to_disk = validated_data.pop("save_metadata_to_disk")
             instance.save()
             logger.info(
-                "Updated save_metadata_to_disk for user %s",
+                "Updated save_metadata_to_disk for user to: %s",
                 instance.save_metadata_to_disk,
             )
+
         if "datetime_rules" in validated_data:
             new_datetime_rules = validated_data.pop("datetime_rules")
             instance.datetime_rules = new_datetime_rules
             instance.save()
-            logger.info("Updated datetime_rules for user %s", instance.datetime_rules)
+            logger.info("Updated datetime_rules for user to: %s", instance.datetime_rules)
+
         if "default_timezone" in validated_data:
             new_default_timezone = validated_data.pop("default_timezone")
             instance.default_timezone = new_default_timezone
             instance.save()
             logger.info(
-                "Updated default_timezone for user %s", instance.default_timezone
+                "Updated default_timezone for user to: %s", instance.default_timezone
             )
+
         if "face_recognition_model" in validated_data:
             instance.face_recognition_model = validated_data.pop(
                 "face_recognition_model"
             )
             instance.save()
+
         if "min_cluster_size" in validated_data:
             instance.min_cluster_size = validated_data.pop("min_cluster_size")
             instance.save()
+
         if "confidence_unknown_face" in validated_data:
             instance.confidence_unknown_face = validated_data.pop(
                 "confidence_unknown_face"
             )
             instance.save()
+
         if "min_samples" in validated_data:
             instance.min_samples = validated_data.pop("min_samples")
             instance.save()
+
         if "cluster_selection_epsilon" in validated_data:
             instance.cluster_selection_epsilon = validated_data.pop(
                 "cluster_selection_epsilon"
             )
             instance.save()
+
         if "llm_settings" in validated_data:
             instance.llm_settings = validated_data.pop("llm_settings")
             instance.save()
@@ -206,9 +231,11 @@ class ManageUserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "password",
+            "scan_directory",
         )
         extra_kwargs = {
             "password": {"write_only": True},
+            "scan_directory": {"required": False},
         }
 
     def get_photo_count(self, obj) -> int:
@@ -240,6 +267,18 @@ class ManageUserSerializer(serializers.ModelSerializer):
         if "last_name" in validated_data:
             last_name = validated_data.pop("last_name")
             instance.last_name = last_name
+
+        if "scan_directory" in validated_data:
+            new_scan_directory = validated_data.pop("scan_directory")
+
+            if new_scan_directory != "":
+                if os.path.exists(new_scan_directory):
+                    instance.scan_directory = new_scan_directory
+                    logger.info(
+                        "Updated scan directory for user to: %s", instance.scan_directory
+                    )
+                else:
+                    raise ValidationError("Scan directory does not exist")
 
         instance.save()
         return instance

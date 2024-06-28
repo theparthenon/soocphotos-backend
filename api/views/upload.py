@@ -128,35 +128,43 @@ class UploadPhotosChunkedComplete(ChunkedUploadCompleteView):
         filename = request.POST.get("filename")
         filename = pv.sanitize_filename(filename)
 
-        if not os.path.exists(settings.UPLOAD_ROOT):
-            os.mkdir(settings.UPLOAD_ROOT)
+        # TODO: Get origin device
+        device = "web"
+
+        if not os.path.exists(os.path.join(user.scan_directory, "uploads")):
+            os.mkdir(os.path.join(user.scan_directory, "uploads"))
+        if not os.path.exists(os.path.join(user.scan_directory, "uploads", device)):
+            os.mkdir(os.path.join(user.scan_directory, "uploads", device))
 
         photo = uploaded_file
         image_hash = calculate_hash_b64(user, io.BytesIO(photo.read()))
 
         if not Photos.objects.filter(image_hash=image_hash).exists():
-            if not os.path.exists(os.path.join(settings.UPLOAD_ROOT, filename)):
-                photo_path = os.path.join(settings.UPLOAD_ROOT, filename)
+            if not os.path.exists(
+                os.path.join(user.scan_directory, "uploads", device, filename)
+            ):
+                photo_path = os.path.join(
+                    user.scan_directory, "uploads", device, filename
+                )
             else:
                 existing_photo_hash = calculate_hash(
-                    user, os.path.join(settings.UPLOAD_ROOT, filename)
+                    user, os.path.join(user.scan_directory, "uploads", device, filename)
                 )
 
                 file_name = os.path.splitext(os.path.basename(filename))[0]
                 file_name_extension = os.path.splitext(os.path.basename(filename))[1]
 
                 if existing_photo_hash == image_hash:
-                    # File already exists, do not copy it to the upload folder.
+                    # File already exist, do not copy it in the upload folder
                     logger.info(
-                        "Photo %s duplicated with hash %s.",
-                        filename,
-                        image_hash,
+                        "Photo %s duplicated with hash %s ", filename, image_hash
                     )
-
                     photo_path = ""
                 else:
                     photo_path = os.path.join(
-                        settings.UPLOAD_ROOT,
+                        user.scan_directory,
+                        "uploads",
+                        device,
                         file_name + "_" + image_hash + file_name_extension,
                     )
 

@@ -77,6 +77,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 "datetime_rules",
                 "default_timezone",
                 "is_superuser",
+                "scan_directory",
             )
             .order_by("id")
         )

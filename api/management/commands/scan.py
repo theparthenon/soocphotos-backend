@@ -35,7 +35,7 @@ class Command(BaseCommand):
                 if user == deleted_user:
                     continue
                 for scan_file in scan_files:
-                    if scan_file.startswith(settings.CONSUME_DIR):
+                    if scan_file.startswith(user.scan_directory):
                         user_files.append(scan_file)
                 if user_files:
                     scan_photos(user, False, uuid.uuid4(), scan_files=user_files)
@@ -46,5 +46,5 @@ class Command(BaseCommand):
         for user in User.objects.all():
             if user != deleted_user:
                 scan_photos(
-                    user, options["full_scan"], uuid.uuid4(), settings.CONSUME_DIR
+                    user, options["full_scan"], uuid.uuid4(), user.scan_directory
                 )
