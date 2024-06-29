@@ -12,6 +12,7 @@ from django.db import models
 from django.db.models import Q
 from django.db.utils import IntegrityError
 import requests
+from pillow_heif import register_heif_opener
 from taggit.managers import TaggableManager
 
 from api import date_time_extractor
@@ -392,6 +393,17 @@ class Photos(models.Model):
         except Exception as e:
             logger.error("image %s: scan face failed", self)
             raise e
+
+    def _extract_height_width(self, commit=True):
+        register_heif_opener()
+
+        img = PIL.Image.open(self.original_image.path)
+
+        self.height = img.height
+        self.width = img.width
+
+        if commit:
+            self.save()
 
     def _geolocate(self, commit=True):
         new_gps_lat, new_gps_lon = get_metadata(

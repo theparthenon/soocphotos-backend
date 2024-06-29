@@ -66,7 +66,6 @@ class AlbumPersonViewSet(viewsets.ModelViewSet):
 
 class PersonViewSet(viewsets.ModelViewSet):
     serializer_class = PersonSerializer
-    pagination_class = StandardResultsSetPagination
     filter_backends = (filters.SearchFilter,)
     search_fields = ["name"]
     ordering_fields = ["name"]

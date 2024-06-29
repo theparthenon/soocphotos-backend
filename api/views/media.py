@@ -39,7 +39,7 @@ class MediaAccessView(APIView):
             return HttpResponseForbidden()
 
         match(path.lower()):
-            case "thumbnail":
+            case "thumbnails":
                 response = HttpResponse()
                 response["Content-Type"] = "image/webp"
                 response["X-Accel-Redirect"] = self._get_protected_media_url(

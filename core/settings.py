@@ -3,7 +3,8 @@
 import os
 import datetime
 from concurrent_log_handler.queue import setup_logging_queues
-import sentry_sdk
+
+# import sentry_sdk
 
 #################################################
 # Directories                                   #
@@ -37,16 +38,16 @@ ROOT_URLCONF = "core.urls"
 # Sentry                                        #
 #################################################
 
-sentry_sdk.init(
-    dsn="https://8988bb27a8348cb75cff3d3500453d99@o4507504124624896.ingest.us.sentry.io/4507504198942720",
-    # Set traces_sample_rate to 1.0 to capture 100%
-    # of transactions for performance monitoring.
-    traces_sample_rate=1.0,
-    # Set profiles_sample_rate to 1.0 to profile 100%
-    # of sampled transactions.
-    # We recommend adjusting this value in production.
-    profiles_sample_rate=1.0,
-)
+# sentry_sdk.init(
+#     dsn="https://8988bb27a8348cb75cff3d3500453d99@o4507504124624896.ingest.us.sentry.io/4507504198942720",
+#     # Set traces_sample_rate to 1.0 to capture 100%
+#     # of transactions for performance monitoring.
+#     traces_sample_rate=1.0,
+#     # Set profiles_sample_rate to 1.0 to profile 100%
+#     # of sampled transactions.
+#     # We recommend adjusting this value in production.
+#     profiles_sample_rate=1.0,
+# )
 
 #################################################
 # Security                                      #
