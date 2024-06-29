@@ -24,7 +24,7 @@ from django.views.decorators.cache import cache_page
 from django.views.decorators.vary import vary_on_cookie
 from django_q.tasks import AsyncTask, Chain
 
-from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
@@ -168,13 +168,15 @@ class MediaAccessView(APIView):
 
 
 class MediaAccessFullsizeOriginalView(APIView):
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def _get_protected_media_url(self, path, fname):
         return "/protected_media{}/{}".format(path, fname)
 
     def _generate_response(self, photo, path, fname, transcode_videos):
         if "thumbnail" in path:
+            logger.info("path: %s", path)
+            logger.info("Photo: %s", photo)
             response = HttpResponse()
             filename = os.path.splitext(photo.thumbnail.path)[1]
 
@@ -300,37 +302,6 @@ class MediaAccessFullsizeOriginalView(APIView):
             except Exception:
                 return HttpResponse(status=404)
 
-        if path.lower() == "embedded_media":
-            jwt = request.COOKIES.get("jwt")
-            query = Q(public=True)
-
-            if request.user.is_authenticated:
-                query = Q(owner=request.user)
-
-            if (
-                jwt is not None
-            ):  # pragma: no cover, currently it's difficult to test requests with jwt in cookies
-                try:
-                    token = AccessToken(jwt)
-                    user = User.objects.filter(id=token["user_id"]).only("id").first()
-                    query = Q(owner=user)
-                except TokenError:
-                    pass
-
-            try:
-                photo = Photos.objects.filter(query, image_hash=fname).first()
-
-                if not photo or photo.original_image.embedded_media.count() < 1:
-                    raise Photos.DoesNotExist()
-            except Photos.DoesNotExist:
-                return HttpResponse(status=404)
-
-            response = HttpResponse()
-            response["Content-Type"] = "video/mp4"
-            response["X-Accel-Redirect"] = f"/protected_media/{path}/{fname}_1.mp4"
-
-            return response
-
         if path.lower() != "photos":
             jwt = request.COOKIES.get("jwt")
             image_hash = fname.split(".")[0].split("_")[0]
@@ -357,7 +328,7 @@ class MediaAccessFullsizeOriginalView(APIView):
                 .first()
             )
 
-            if photo.owner == user:
+            if IsAuthenticated():
                 return self._generate_response(
                     photo, path, fname, user.transcode_videos
                 )
@@ -374,7 +345,7 @@ class MediaAccessFullsizeOriginalView(APIView):
 
             if photo.original_image.path.startswith(settings.PHOTOS):
                 internal_path = (
-                    "/original" + photo.original_image.path[len(settings.PHOTOS) :]
+                    "/originals" + photo.original_image.path[len(settings.PHOTOS) :]
                 )
             else:
                 # If, for some reason, the file is in a weird place, handle that.

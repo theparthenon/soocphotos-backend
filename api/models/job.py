@@ -22,8 +22,10 @@ class Job(models.Model):
     JOB_TRAIN_FACES = 3
     JOB_CLUSTER_ALL_FACES = 4
     JOB_DELETE_MISSING_PHOTOS = 5
-    JOB_DOWNLOAD_PHOtoS = 6
+    JOB_DOWNLOAD_PHOTOS = 6
     JOB_DOWLOAD_MODELS = 7
+    JOB_GENERATE_AUTO_ALBUMS = 8
+    JOB_GENERATE_AUTO_ALBUM_TITLES = 9
 
     JOB_TYPES = (
         (JOB_SCAN_PHOTOS, "Scan Photos"),
@@ -31,8 +33,10 @@ class Job(models.Model):
         (JOB_TRAIN_FACES, "Train Faces"),
         (JOB_CLUSTER_ALL_FACES, "Find Similar Faces"),
         (JOB_DELETE_MISSING_PHOTOS, "Delete Missing Photos"),
-        (JOB_DOWNLOAD_PHOtoS, "Download Selected Photos"),
+        (JOB_DOWNLOAD_PHOTOS, "Download Selected Photos"),
         (JOB_DOWLOAD_MODELS, "Download Models"),
+        (JOB_GENERATE_AUTO_ALBUMS, "Generate Event Albums"),
+        (JOB_GENERATE_AUTO_ALBUM_TITLES, "Regenerate Event Titles"),
     )
 
     job_id = models.CharField(max_length=36, unique=True, db_index=True)

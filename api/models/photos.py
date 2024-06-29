@@ -163,6 +163,36 @@ class Photos(models.Model):
         # Safe geolocation_json
         album_date.save()
 
+    def _add_to_album_thing(self):
+        if (
+            type(self.captions_json) is dict
+            and "places365" in self.captions_json.keys()
+        ):
+            for attribute in self.captions_json["places365"]["attributes"]:
+                album_thing = api.models.album_thing.get_album_thing(
+                    title=attribute,
+                    owner=self.owner,
+                )
+
+                if album_thing.photos.filter(image_hash=self.image_hash).count() == 0:
+                    album_thing.photos.add(self)
+                    album_thing.thing_type = "places365_attribute"
+                    album_thing.save()
+
+            for category in self.captions_json["places365"]["categories"]:
+                album_thing = api.models.album_thing.get_album_thing(
+                    title=category,
+                    owner=self.owner,
+                )
+
+                if album_thing.photos.filter(image_hash=self.image_hash).count() == 0:
+                    album_thing = api.models.album_thing.get_album_thing(
+                        title=category, owner=self.owner
+                    )
+                    album_thing.photos.add(self)
+                    album_thing.thing_type = "places365_category"
+                    album_thing.save()
+
     def _find_album_date(self):
         old_album_date = None
 
@@ -192,6 +222,11 @@ class Photos(models.Model):
                 old_album_date = possible_old_album_date
 
         return old_album_date
+
+    def _find_album_place(self):
+        return api.models.album_place.AlbumPlace.objects.filter(
+            Q(photos__in=[self])
+        ).all()
 
     def _extract_date_time_from_exif(self, commit=True):
         """Extract date time from photo EXIF data."""

@@ -10,14 +10,16 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 
 from api.views import (
-    authentication,
+    album_auto,
     album_date,
     album_place,
     album_thing,
     albums,
+    authentication,
     dataviz,
     faces,
     jobs,
+    media,
     misc_views,
     person,
     photos,
@@ -45,6 +47,12 @@ router = routers.DefaultRouter()
 router.register(r"api/albums", albums.AlbumViewSet, basename="albums")
 
 # router.register(r"api/albums/list", albums.AlbumViewSet, basename="albums_list")
+
+router.register(
+    r"api/album/auto/list", album_auto.AlbumAutoListViewSet, basename="album_auto_list"
+)
+
+router.register(r"api/album/auto", album_auto.AlbumAutoViewSet, basename="album_auto")
 
 router.register(r"api/album/date", album_date.AlbumDateViewSet, basename="album_date")
 
@@ -76,17 +84,15 @@ router.register(
 #     basename="album_thing_list",
 # )
 
-router.register(r"api/faces", faces.FaceListView, basename="faces")
-
 router.register(
     r"api/faces/incomplete", faces.FaceIncompleteListView, basename="faces_incomplete"
 )
 
+router.register(r"api/faces", faces.FaceListView, basename="faces")
+
 router.register(r"api/jobs", jobs.JobViewSet, basename="jobs")
 
 router.register(r"api/people", person.PersonViewSet, basename="people")
-
-router.register(r"api/photos", photos.PhotosViewSet, basename="photos")
 
 router.register(r"api/photos/edit", photos.PhotoEditViewSet, basename="photos_edit")
 
@@ -109,6 +115,8 @@ router.register(
     photos.PhotosWithoutTimestampViewSet,
     basename="photos_without_timestamp",
 )
+
+router.register(r"api/photos", photos.PhotosViewSet, basename="photos")
 
 router.register(r"api/services", services.ServiceViewSet, basename="services")
 
@@ -141,6 +149,8 @@ urlpatterns = [
     ),
     re_path(r"^api/faces/scan", faces.ScanFacesView.as_view(), name="faces_scan"),
     re_path(r"^api/faces/train", faces.TrainFaceView.as_view(), name="faces_train"),
+    re_path(r"^api/generate/auto-album", album_auto.AutoAlbumGenerateView.as_view()),
+    re_path(r"^api/generate/auto-album-title", album_auto.RegenerateAutoAlbumTitles.as_view()),
     re_path(r"^api/location/sunburst", dataviz.LocationSunburst.as_view()),
     re_path(r"^api/location/timeline", dataviz.LocationTimeline.as_view()),
     re_path(r"^api/photos/download$", misc_views.ZipListPhotosView_V2.as_view()),
@@ -176,7 +186,7 @@ urlpatterns = [
     re_path(r"^api/word-cloud", dataviz.SearchTermWordCloudView.as_view()),
     re_path(
         r"^media/(?P<path>.*)/(?P<fname>.*)",
-        misc_views.MediaAccessFullsizeOriginalView.as_view(),
+        media.MediaAccessView.as_view(),
         name="media",
     ),
 ]

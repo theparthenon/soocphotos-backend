@@ -151,6 +151,7 @@ class PhotosWithoutTimestampViewSet(ListViewSet):
     serializer_class = PhotoSummarySerializer
     pagination_class = RegularResultsSetPagination
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = (filters.SearchFilter,)
     search_filters = ["search_captions", "search_location", "faces__person__name"]
 
     def get_queryset(self):
