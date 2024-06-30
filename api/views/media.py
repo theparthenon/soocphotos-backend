@@ -38,7 +38,7 @@ class MediaAccessView(APIView):
             logger.warning("Could not get token.")
             return HttpResponseForbidden()
 
-        match(path.lower()):
+        match (path.lower()):
             case "thumbnails":
                 response = HttpResponse()
                 response["Content-Type"] = "image/webp"
@@ -48,10 +48,21 @@ class MediaAccessView(APIView):
 
                 return response
 
+            case "optimized":
+                response = HttpResponse()
+                response["Content-Type"] = "image/webp"
+                response["X-Accel-Redirect"] = self._get_protected_media_url(
+                    "optimized", fname + ".webp"
+                )
+
+                return response
+
             case "faces":
                 response = HttpResponse()
                 response["Content-Type"] = "image/jpg"
-                response["X-Accel-Redirect"] = self._get_protected_media_url(path, fname)
+                response["X-Accel-Redirect"] = self._get_protected_media_url(
+                    path, fname
+                )
 
                 return response
 
@@ -59,7 +70,9 @@ class MediaAccessView(APIView):
                 try:
                     response = HttpResponse()
                     response["Content-Type"] = "image/png"
-                    response["X-Accel-Redirect"] = "/protected_media/" + path + "/" + fname
+                    response["X-Accel-Redirect"] = (
+                        "/protected_media/" + path + "/" + fname
+                    )
 
                     return response
                 except Exception as e:
