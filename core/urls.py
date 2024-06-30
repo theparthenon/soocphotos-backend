@@ -14,6 +14,7 @@ from api.views import (
     album_date,
     album_place,
     album_thing,
+    album_user,
     albums,
     authentication,
     dataviz,
@@ -60,9 +61,7 @@ router.register(r"api/album/date", album_date.AlbumDateViewSet, basename="album_
 #     r"api/albums/date/list", album_date.AlbumDateListViewSet, basename="album_date_list"
 # )
 
-router.register(
-    r"api/album/people", person.AlbumPersonViewSet, basename="album_people"
-)
+router.register(r"api/album/people", person.AlbumPersonViewSet, basename="album_people")
 
 router.register(
     r"api/album/place", album_place.AlbumPlaceViewSet, basename="album_place"
@@ -77,6 +76,16 @@ router.register(
 router.register(
     r"api/album/thing", album_thing.AlbumThingViewSet, basename="album_thing"
 )
+
+router.register(
+    r"api/albums/user/list", album_user.AlbumUserListViewSet, basename="album_user_list"
+)
+
+router.register(
+    r"api/albums/user/edit", album_user.AlbumUserEditViewSet, basename="edit_album_user"
+)
+
+router.register(r"api/albums/user", album_user.AlbumUserViewSet, basename="album_user")
 
 # router.register(
 #     r"api/album/thing/list",
@@ -150,7 +159,10 @@ urlpatterns = [
     re_path(r"^api/faces/scan", faces.ScanFacesView.as_view(), name="faces_scan"),
     re_path(r"^api/faces/train", faces.TrainFaceView.as_view(), name="faces_train"),
     re_path(r"^api/generate/auto-album", album_auto.AutoAlbumGenerateView.as_view()),
-    re_path(r"^api/generate/auto-album-title", album_auto.RegenerateAutoAlbumTitles.as_view()),
+    re_path(
+        r"^api/generate/auto-album-title",
+        album_auto.RegenerateAutoAlbumTitles.as_view(),
+    ),
     re_path(r"^api/location/sunburst", dataviz.LocationSunburst.as_view()),
     re_path(r"^api/location/timeline", dataviz.LocationTimeline.as_view()),
     re_path(r"^api/photos/download$", misc_views.ZipListPhotosView_V2.as_view()),

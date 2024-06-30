@@ -236,26 +236,28 @@ class PhotoSummarySerializer(serializers.ModelSerializer):
     """Photo summary serializer."""
 
     id = serializers.SerializerMethodField()
+    dominantColor = serializers.SerializerMethodField()
     url = serializers.SerializerMethodField()
     location = serializers.SerializerMethodField()
     date = serializers.SerializerMethodField()
+    birthTime = serializers.SerializerMethodField()
     video_length = serializers.SerializerMethodField()
-    exif_timestamp = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
     owner = UserSimpleSerializer()
 
     class Meta:
         model = Photos
         fields = (
             "id",
+            "dominantColor",
             "url",
             "location",
             "date",
+            "birthTime",
+            "type",
             "video_length",
-            "owner",
             "rating",
-            "exif_timestamp",
-            "height",
-            "width",
+            "owner",
         )
 
     def get_id(self, obj) -> str:
@@ -284,11 +286,9 @@ class PhotoSummarySerializer(serializers.ModelSerializer):
         else:
             return ""
 
-    def get_exif_timestamp(self, obj) -> str:
-        """Returns photo's date."""
-
+    def get_birthTime(self, obj) -> str:
         if obj.exif_timestamp:
-            return obj.exif_timestamp.isoformat()
+            return obj.exif_timestamp
         else:
             return ""
 
@@ -297,6 +297,15 @@ class PhotoSummarySerializer(serializers.ModelSerializer):
 
         if obj.video_length:
             return obj.video_length
+        else:
+            return ""
+
+    def get_dominantColor(self, obj) -> str:
+        """Get's dominant color if it exists."""
+
+        if obj.dominant_color:
+            dominant_color = obj.dominant_color[1:-1]
+            return "#%02x%02x%02x" % tuple(map(int, dominant_color.split(", ")))
         else:
             return ""
 

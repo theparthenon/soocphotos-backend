@@ -5,6 +5,7 @@ from api.models.album_auto import AlbumAuto
 from api.models.album_date import AlbumDate
 from api.models.album_place import AlbumPlace
 from api.models.album_thing import AlbumThing
+from api.models.album_user import AlbumUser
 from api.models.cluster import Cluster
 from api.models.face import Face
 from api.models.file import File
@@ -19,6 +20,7 @@ __all__ = [
     "AlbumDate",
     "AlbumPlace",
     "AlbumThing",
+    "AlbumUser",
     "Cluster",
     "Face",
     "File",
