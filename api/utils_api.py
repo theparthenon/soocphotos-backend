@@ -95,19 +95,19 @@ def get_location_timeline(user):
             WITH data AS (
                 SELECT
                     jsonb_extract_path_text("features", '-1', 'text') "location"
-                    , "api_photo"."exif_timestamp"
-                    , ROW_NUMBER() OVER(ORDER BY "api_photo"."exif_timestamp") "unique_order"
+                    , "api_photos"."exif_timestamp"
+                    , ROW_NUMBER() OVER(ORDER BY "api_photos"."exif_timestamp") "unique_order"
                 FROM
                     "api_photo"
-                    , jsonb_extract_path("api_photo"."geolocation_json", 'features') "features"
+                    , jsonb_extract_path("api_photos"."geolocation_json", 'features') "features"
                 WHERE
                     (
-                        "api_photo"."exif_timestamp" IS NOT NULL
+                        "api_photos"."exif_timestamp" IS NOT NULL
                         AND jsonb_extract_path("features", '-1', 'text') IS NOT NULL
-                        AND "api_photo"."owner_id" = %s
+                        AND "api_photos"."owner_id" = %s
                     )
                 ORDER BY
-                     "api_photo"."exif_timestamp"
+                     "api_photos"."exif_timestamp"
             ),
             partitioned AS (
                 SELECT
@@ -668,10 +668,10 @@ def get_location_clusters(user):
                 , jsonb_extract_path_text("feature", 'center', '0')
                 , jsonb_extract_path_text("feature", 'center', '1')
             FROM
-                "api_photo"
-                , jsonb_array_elements(jsonb_extract_path("api_photo"."geolocation_json", 'features')) "feature"
+                "api_photos"
+                , jsonb_array_elements(jsonb_extract_path("api_photos"."geolocation_json", 'features')) "feature"
             WHERE (
-                "api_photo"."owner_id" = %s
+                "api_photos"."owner_id" = %s
                 AND NOT (jsonb_extract_path_text("feature", 'text') ~ '^(-)?[0-9]+$')
             )
             ORDER BY
@@ -689,16 +689,16 @@ def get_location_sunburst(user):
     with connection.cursor() as cursor:
         raw_sql = """
             SELECT
-                jsonb_extract_path_text("api_photo"."geolocation_json", 'features', '-1', 'text') "l1"
-                , jsonb_extract_path_text("api_photo"."geolocation_json", 'features', '-2', 'text') "l2"
-                , jsonb_extract_path_text("api_photo"."geolocation_json", 'features', '-3', 'text') "l3"
+                jsonb_extract_path_text("api_photos"."geolocation_json", 'features', '-1', 'text') "l1"
+                , jsonb_extract_path_text("api_photos"."geolocation_json", 'features', '-2', 'text') "l2"
+                , jsonb_extract_path_text("api_photos"."geolocation_json", 'features', '-3', 'text') "l3"
                 , COUNT(*)
             FROM
-                "api_photo"
+                "api_photos"
             WHERE
                 (
-                    "api_photo"."owner_id" = %s
-                    AND jsonb_array_length(jsonb_extract_path("api_photo"."geolocation_json", 'features')) >= 3
+                    "api_photos"."owner_id" = %s
+                    AND jsonb_array_length(jsonb_extract_path("api_photos"."geolocation_json", 'features')) >= 3
                 )
             GROUP BY
                 "l1"
@@ -793,7 +793,7 @@ def get_searchterms_wordcloud(user):
     ] = """
         with captionList as (
             select unnest(regexp_split_to_array(search_captions,' , ')) caption
-            from api_photo where owner_id = %(userid)s
+            from api_photos where owner_id = %(userid)s
         )
         select caption, count(*) from captionList group by caption order by count(*) desc limit 100;
     """
@@ -802,7 +802,7 @@ def get_searchterms_wordcloud(user):
     ] = """
         with NameList as (
             select api_person.name
-            from api_photo join api_face on image_hash = api_face.photo_id
+            from api_photos join api_face on image_hash = api_face.photo_id
             join api_person on person_id = api_person.id
             where owner_id = %(userid)s
         )
@@ -812,8 +812,8 @@ def get_searchterms_wordcloud(user):
         "locations"
     ] = """
          with arrayloctable as (
-            select jsonb_array_elements(jsonb_extract_path(api_photo.geolocation_json,  'features')::jsonb) arrayloc , image_hash
-            from api_photo where owner_id = %(userid)s
+            select jsonb_array_elements(jsonb_extract_path(api_photos.geolocation_json,  'features')::jsonb) arrayloc , image_hash
+            from api_photos where owner_id = %(userid)s
         ), loctable as (
             select jsonb_array_elements(jsonb_extract_path(arrayloc,'place_type'))::text as "key",
             replace(jsonb_extract_path(arrayloc,'text')::text,'"','') as "value", image_hash
