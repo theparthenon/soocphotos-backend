@@ -78,14 +78,14 @@ router.register(
 )
 
 router.register(
-    r"api/albums/user/list", album_user.AlbumUserListViewSet, basename="album_user_list"
+    r"api/album/user/list", album_user.AlbumUserListViewSet, basename="album_user_list"
 )
 
 router.register(
-    r"api/albums/user/edit", album_user.AlbumUserEditViewSet, basename="edit_album_user"
+    r"api/album/user/edit", album_user.AlbumUserEditViewSet, basename="edit_album_user"
 )
 
-router.register(r"api/albums/user", album_user.AlbumUserViewSet, basename="album_user")
+router.register(r"api/album/user", album_user.AlbumUserViewSet, basename="album_user")
 
 # router.register(
 #     r"api/album/thing/list",

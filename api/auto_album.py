@@ -9,7 +9,7 @@ from api.models import (
     AlbumDate,
     AlbumPlace,
     AlbumThing,
-    Albums,
+    AlbumUser,
     Face,
     File,
     Job,
@@ -116,7 +116,10 @@ def generate_event_albums(user, job_id):
             lastKey = group[-1].exif_timestamp + timedelta(hours=11, minutes=59)
             logger.info(str(key.date) + " - " + str(lastKey.date))
             logger.info(
-                "job %d: processing auto album with date: %s to %s", job_id, key.strftime(date_format), lastKey.strftime(date_format)
+                "job %d: processing auto album with date: %s to %s",
+                job_id,
+                key.strftime(date_format),
+                lastKey.strftime(date_format),
             )
             items = group
 
@@ -133,9 +136,7 @@ def generate_event_albums(user, job_id):
                     album.timestamp = key
                     album.save()
 
-                    logger.info(
-                        "job %d: generate auto album %s", job_id, album.id
-                    )
+                    logger.info("job %d: generate auto album %s", job_id, album.id)
                     locs = []
 
                     for item in items:
@@ -176,7 +177,9 @@ def generate_event_albums(user, job_id):
                 if qs.count() > 1:
                     # To-Do: Merge both auto albums
                     logger.info(
-                        "job %d: found multiple auto albums for date %s", job_id, key.strftime(date_format)
+                        "job %d: found multiple auto albums for date %s",
+                        job_id,
+                        key.strftime(date_format),
                     )
 
                     continue
@@ -235,7 +238,7 @@ def delete_missing_photos(user, job_id):
             for album_place in album_places:
                 album_place.photos.remove(missing_photo)
 
-            album_users = Albums.objects.filter(photos=missing_photo)
+            album_users = AlbumUser.objects.filter(photos=missing_photo)
 
             for album_user in album_users:
                 album_user.photos.remove(missing_photo)

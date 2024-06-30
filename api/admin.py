@@ -3,7 +3,21 @@
 from django.contrib import admin
 from django_q.tasks import AsyncTask
 
-from .models import Cluster, Face, File, Job, Person, Photos, User
+from .models import (
+    AlbumAuto,
+    AlbumDate,
+    AlbumPlace,
+    AlbumThing,
+    AlbumUser,
+    Albums,
+    Cluster,
+    Face,
+    File,
+    Job,
+    Person,
+    Photos,
+    User,
+)
 
 
 def deduplicate_faces_function(queryset):
@@ -88,6 +102,12 @@ class FaceDeduplication(admin.ModelAdmin):
 admin.site.register(Photos, FaceDeduplication)
 admin.site.register(Person)
 admin.site.register(Face)
+admin.site.register(AlbumAuto)
+admin.site.register(AlbumUser)
+admin.site.register(AlbumThing)
+admin.site.register(AlbumDate)
+admin.site.register(AlbumPlace)
+admin.site.register(Albums)
 admin.site.register(File)
 admin.site.register(Cluster)
 admin.site.register(Job)

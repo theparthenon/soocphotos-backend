@@ -5,6 +5,11 @@ from datetime import datetime
 from django.core.cache import cache
 from django.db.models.signals import post_delete, post_save
 
+from api.models.album_auto import AlbumAuto
+from api.models.album_date import AlbumDate
+from api.models.album_place import AlbumPlace
+from api.models.album_thing import AlbumThing
+from api.models.album_user import AlbumUser
 from api.models.face import Face
 from api.models.person import Person
 from api.models.photos import Photos
@@ -18,6 +23,15 @@ def change_api_updated_at(
     cache.set("api_updated_at_timestamp", datetime.now(datetime.UTC))
 
 
-for model in [Person, Face, Photos]:
+for model in [
+    Person,
+    Face,
+    Photos,
+    AlbumDate,
+    AlbumAuto,
+    AlbumUser,
+    AlbumPlace,
+    AlbumThing,
+]:
     post_save.connect(receiver=change_api_updated_at, sender=model)
     post_delete.connect(receiver=change_api_updated_at, sender=model)
