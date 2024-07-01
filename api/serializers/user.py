@@ -54,6 +54,7 @@ class UserSerializer(serializers.ModelSerializer):
             "save_metadata_to_disk",
             "datetime_rules",
             "default_timezone",
+            "image_scale",
         ]
 
     def update(self, instance, validated_data):
@@ -97,12 +98,19 @@ class UserSerializer(serializers.ModelSerializer):
                 instance.confidence_person,
             )
 
+        if "image_scale" in validated_data:
+            new_image_scale = validated_data.pop("image_scale")
+            instance.image_scale = new_image_scale
+            instance.save()
+            logger.info("Updated image_scale for user to: %s", instance.image_scale)
+
         if "favorite_min_rating" in validated_data:
             new_favorite_min_rating = validated_data.pop("favorite_min_rating")
             instance.favorite_min_rating = new_favorite_min_rating
             instance.save()
             logger.info(
-                "Updated favorite_min_rating for user to: %s", instance.favorite_min_rating
+                "Updated favorite_min_rating for user to: %s",
+                instance.favorite_min_rating,
             )
 
         if "save_metadata_to_disk" in validated_data:
@@ -117,7 +125,9 @@ class UserSerializer(serializers.ModelSerializer):
             new_datetime_rules = validated_data.pop("datetime_rules")
             instance.datetime_rules = new_datetime_rules
             instance.save()
-            logger.info("Updated datetime_rules for user to: %s", instance.datetime_rules)
+            logger.info(
+                "Updated datetime_rules for user to: %s", instance.datetime_rules
+            )
 
         if "default_timezone" in validated_data:
             new_default_timezone = validated_data.pop("default_timezone")
@@ -232,6 +242,7 @@ class ManageUserSerializer(serializers.ModelSerializer):
             "last_name",
             "password",
             "scan_directory",
+            "image_scale",
         )
         extra_kwargs = {
             "password": {"write_only": True},
@@ -275,7 +286,8 @@ class ManageUserSerializer(serializers.ModelSerializer):
                 if os.path.exists(new_scan_directory):
                     instance.scan_directory = new_scan_directory
                     logger.info(
-                        "Updated scan directory for user to: %s", instance.scan_directory
+                        "Updated scan directory for user to: %s",
+                        instance.scan_directory,
                     )
                 else:
                     raise ValidationError("Scan directory does not exist")
