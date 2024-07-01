@@ -32,37 +32,37 @@ class AlbumDateViewSet(viewsets.ModelViewSet):
         return AlbumDateSerializer
 
     def get_queryset(self):
-        photo_filter = []
-        photo_filter.append(Q(aspect_ratio__isnull=False))
+        photoFilter = []
+        photoFilter.append(Q(aspect_ratio__isnull=False))
 
         if not self.request.user.is_anonymous:
-            photo_filter.append(Q(owner=self.request.user))
+            photoFilter.append(Q(owner=self.request.user))
 
         if self.request.query_params.get("favorite"):
             min_rating = self.request.user.favorite_min_rating
-            photo_filter.append(Q(rating__gte=min_rating))
+            photoFilter.append(Q(rating__gte=min_rating))
 
         if self.request.query_params.get("hidden"):
-            photo_filter.append(Q(hidden=True))
+            photoFilter.append(Q(hidden=True))
         else:
-            photo_filter.append(Q(hidden=False))
+            photoFilter.append(Q(hidden=False))
 
         if self.request.query_params.get("video"):
-            photo_filter.append(Q(video=True))
+            photoFilter.append(Q(video=True))
 
         if self.request.query_params.get("photo"):
-            photo_filter.append(Q(video=False))
+            photoFilter.append(Q(video=False))
 
         if self.request.query_params.get("deleted"):
-            photo_filter.append(Q(deleted=True))
+            photoFilter.append(Q(deleted=True))
         else:
-            photo_filter.append(Q(deleted=False))
+            photoFilter.append(Q(deleted=False))
 
         if self.request.query_params.get("person"):
-            photo_filter.append(
+            photoFilter.append(
                 Q(faces__person__id=self.request.query_params.get("person"))
             )
-            photo_filter.append(
+            photoFilter.append(
                 Q(
                     faces__person_label_probability__gte=F(
                         "faces__photo__owner__confidence_person"
@@ -70,10 +70,10 @@ class AlbumDateViewSet(viewsets.ModelViewSet):
                 )
             )
 
-        album_date = AlbumDate.objects.filter(id=self.kwargs["pk"]).first()
+        albumDate = AlbumDate.objects.filter(id=self.kwargs["pk"]).first()
 
         photo_qs = (
-            album_date.photos.filter(*photo_filter)
+            albumDate.photos.filter(*photoFilter)
             .prefetch_related(
                 Prefetch(
                     "owner",
@@ -81,17 +81,13 @@ class AlbumDateViewSet(viewsets.ModelViewSet):
                         "id", "username", "first_name", "last_name"
                     ),
                 ),
-                Prefetch(
-                    "original_image__embedded_media",
-                    queryset=File.objects.only("hash"),
-                ),
             )
             .order_by("-exif_timestamp")
             .only(
                 "image_hash",
                 "aspect_ratio",
                 "video",
-                "original_image",
+                "main_file",
                 "search_location",
                 "dominant_color",
                 "rating",
@@ -118,6 +114,7 @@ class AlbumDateViewSet(viewsets.ModelViewSet):
 
     def get_list_queryset(self):
         filter = []
+        filter.append(Q(photos__aspect_ratio__isnull=False))
 
         if self.request.query_params.get("hidden"):
             filter.append(Q(photos__hidden=True))
@@ -179,68 +176,3 @@ class AlbumDateViewSet(viewsets.ModelViewSet):
         serializer_data["number_of_items"] = count
 
         return Response({"results": serializer_data})
-
-
-# # TODO: This could be the summary command in AlbumDateViewSet
-# class AlbumDateListViewSet(ListViewSet):
-#     serializer_class = IncompleteAlbumDateSerializer
-#     pagination_class = None
-#     filter_backends = (filters.SearchFilter,)
-#     search_fields = [
-#         "photos__search_captions",
-#         "photos__search_location",
-#         "photos__faces__person__name",
-#     ]
-#     permission_classes = [IsAuthenticated]
-
-#     def get_queryset(self):
-#         filter = []
-
-#         if self.request.query_params.get("hidden"):
-#             filter.append(Q(photos__hidden=True))
-#         else:
-#             filter.append(Q(photos__hidden=False))
-
-#         if self.request.query_params.get("deleted"):
-#             filter.append(Q(photos__deleted=True))
-#         else:
-#             filter.append(Q(photos__deleted=False))
-
-#         if not self.request.user.is_anonymous:
-#             filter.append(Q(owner=self.request.user))
-#             filter.append(Q(photos__owner=self.request.user))
-
-#         if self.request.query_params.get("favorite"):
-#             min_rating = self.request.user.favorite_min_rating
-#             filter.append(Q(photos__rating__gte=min_rating))
-
-#         if self.request.query_params.get("video"):
-#             filter.append(Q(photos__video=True))
-
-#         if self.request.query_params.get("photo"):
-#             filter.append(Q(photos__video=False))
-
-#         if self.request.query_params.get("person"):
-#             filter.append(
-#                 Q(photos__faces__person__id=self.request.query_params.get("person"))
-#             )
-#             filter.append(
-#                 Q(
-#                     photos__faces__person_label_probability__gte=F(
-#                         "photos__faces__photo__owner__confidence_person"
-#                     )
-#                 )
-#             )
-
-#         qs = (
-#             AlbumDate.objects.filter(*filter)
-#             .annotate(photo_count=Count("photos", distinct=True))
-#             .filter(Q(photo_count__gt=0))
-#             .order_by(F("date").desc(nulls_last=True))
-#         )
-
-#         return qs
-
-#     def list(self, *args, **kwargs):
-#         serializer = IncompleteAlbumDateSerializer(self.get_queryset(), many=True)
-#         return Response({"results": serializer.data})

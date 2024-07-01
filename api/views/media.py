@@ -70,8 +70,8 @@ class MediaAccessView(APIView):
                 try:
                     response = HttpResponse()
                     response["Content-Type"] = "image/png"
-                    response["X-Accel-Redirect"] = (
-                        "/protected_media/" + path + "/" + fname
+                    response["X-Accel-Redirect"] = self._get_protected_media_url(
+                        path, fname
                     )
 
                     return response

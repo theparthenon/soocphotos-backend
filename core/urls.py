@@ -163,6 +163,7 @@ urlpatterns = [
         r"^api/generate/auto-album-title",
         album_auto.RegenerateAutoAlbumTitles.as_view(),
     ),
+    re_path(r"^api/location/clusters", dataviz.LocationClustersView.as_view()),
     re_path(r"^api/location/sunburst", dataviz.LocationSunburst.as_view()),
     re_path(r"^api/location/timeline", dataviz.LocationTimeline.as_view()),
     re_path(r"^api/photos/download$", misc_views.ZipListPhotosView_V2.as_view()),
