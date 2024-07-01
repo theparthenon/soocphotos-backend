@@ -78,6 +78,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 "default_timezone",
                 "is_superuser",
                 "scan_directory",
+                "image_scale",
             )
             .order_by("id")
         )
