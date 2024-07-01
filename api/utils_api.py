@@ -6,6 +6,7 @@ import stat
 from datetime import datetime
 
 from api.models.album_auto import AlbumAuto
+from api.models.album_user import AlbumUser
 import numpy as np
 import seaborn as sns
 from django.db import connection
@@ -646,7 +647,7 @@ def get_count_stats(user):
         .count()
     )
     num_albumuser = (
-        Albums.objects.all()
+        AlbumUser.objects.filter(owner=user)
         .annotate(photo_count=Count("photos"))
         .filter(Q(photo_count__gt=0))
         .count()
