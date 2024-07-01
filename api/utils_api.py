@@ -15,7 +15,6 @@ from django.db.models.functions import TruncMonth
 
 
 from api.models import (
-    Albums,
     AlbumDate,
     AlbumPlace,
     AlbumThing,
@@ -361,45 +360,45 @@ def get_server_stats():
         # Most common file type for videos (To-Do: Add mime type)
         # most_common_file_type_videos = Photos.objects.filter(Q(owner=user) & Q(video=True)).values("file_extension").annotate(count=Count("file_extension")).order_by("-count").first()
         # Number of Albums
-        number_of_albums = Albums.objects.filter(Q(owner=user)).count()
+        number_of_albums = AlbumUser.objects.filter(Q(owner=user)).count()
         # Min, Max, Mean, Median number of photos
         min_number_of_photos_per_album = (
-            Albums.objects.filter(Q(owner=user))
+            AlbumUser.objects.filter(Q(owner=user))
             .annotate(count=Count("photos"))
             .aggregate(Min("count"))
         )
         max_number_of_photos_per_album = (
-            Albums.objects.filter(Q(owner=user))
+            AlbumUser.objects.filter(Q(owner=user))
             .annotate(count=Count("photos"))
             .aggregate(Max("count"))
         )
         mean_number_of_photos_per_album = (
-            Albums.objects.filter(Q(owner=user))
+            AlbumUser.objects.filter(Q(owner=user))
             .annotate(count=Count("photos"))
             .aggregate(Avg("count"))
         )
         median_number_of_photos_per_album = median_value(
-            Albums.objects.filter(Q(owner=user)).annotate(count=Count("photos")),
+            AlbumUser.objects.filter(Q(owner=user)).annotate(count=Count("photos")),
             "count",
         )
         # Min, Max, Mean, Median number of videos
         min_number_of_videos_per_album = (
-            Albums.objects.filter(Q(owner=user))
+            AlbumUser.objects.filter(Q(owner=user))
             .annotate(count=Count("photos", filter=Q(photos__video=True)))
             .aggregate(Min("count"))
         )
         max_number_of_videos_per_album = (
-            Albums.objects.filter(Q(owner=user))
+            AlbumUser.objects.filter(Q(owner=user))
             .annotate(count=Count("photos", filter=Q(photos__video=True)))
             .aggregate(Max("count"))
         )
         mean_number_of_videos_per_album = (
-            Albums.objects.filter(Q(owner=user))
+            AlbumUser.objects.filter(Q(owner=user))
             .annotate(count=Count("photos", filter=Q(photos__video=True)))
             .aggregate(Avg("count"))
         )
         median_number_of_videos_per_album = median_value(
-            Albums.objects.filter(Q(owner=user)).annotate(
+            AlbumUser.objects.filter(Q(owner=user)).annotate(
                 count=Count("photos", filter=Q(photos__video=True))
             ),
             "count",
