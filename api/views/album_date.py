@@ -33,6 +33,7 @@ class AlbumDateViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         photo_filter = []
+        photo_filter.append(Q(aspect_ratio__isnull=False))
 
         if not self.request.user.is_anonymous:
             photo_filter.append(Q(owner=self.request.user))

@@ -237,6 +237,7 @@ class PhotoSummarySerializer(serializers.ModelSerializer):
 
     id = serializers.SerializerMethodField()
     dominantColor = serializers.SerializerMethodField()
+    aspectRatio = serializers.SerializerMethodField()
     url = serializers.SerializerMethodField()
     location = serializers.SerializerMethodField()
     date = serializers.SerializerMethodField()
@@ -254,6 +255,7 @@ class PhotoSummarySerializer(serializers.ModelSerializer):
             "location",
             "date",
             "birthTime",
+            "aspectRatio",
             "type",
             "video_length",
             "rating",
@@ -264,6 +266,11 @@ class PhotoSummarySerializer(serializers.ModelSerializer):
         """Returns photo's hash."""
 
         return obj.image_hash
+
+    def get_aspectRatio(self, obj) -> float:
+        """Return photo's aspect ratio."""
+
+        return obj.aspect_ratio
 
     def get_url(self, obj) -> str:
         """Returns photo's hash."""

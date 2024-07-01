@@ -80,6 +80,7 @@ class Photos(models.Model):
     size = models.BigIntegerField(default=0)
     width = models.IntegerField(default=0)
     height = models.IntegerField(default=0)
+    aspect_ratio = models.FloatField(blank=True, null=True)
     rating = models.IntegerField(default=0, db_index=True)
     deleted = models.BooleanField(default=False, db_index=True)
     hidden = models.BooleanField(default=False, db_index=True)
@@ -193,6 +194,25 @@ class Photos(models.Model):
                     album_thing.photos.add(self)
                     album_thing.thing_type = "places365_category"
                     album_thing.save()
+
+    def _calculate_aspect_ratio(self, commit=True):
+        try:
+            # Relies on big thumbnail for correct aspect ratio, which is weird
+            height, width = get_metadata(
+                self.optimized_image.path,
+                tags=[Tags.IMAGE_HEIGHT, Tags.IMAGE_WIDTH],
+                try_sidecar=False,
+            )
+            self.aspect_ratio = round(width / height, 2)
+
+            if commit:
+                self.save()
+        except Exception as e:
+            logger.exception(
+                "could not calculate aspect ratio for image %s",
+                self.optimized_image.path,
+            )
+            raise e
 
     def _find_album_date(self):
         old_album_date = None

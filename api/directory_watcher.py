@@ -171,6 +171,16 @@ def handle_new_image(user, path, job_id, photo=None):
             logger.info(
                 "job %d: generate thumbnails: %s, elapsed: %s", job_id, path, elapsed
             )
+            photo._calculate_aspect_ratio(False)
+            elapsed = (datetime.datetime.now() - start).total_seconds()
+            logger.info(
+                "job %d: calculate aspect ratio: %s, elapsed: %s", job_id, path, elapsed
+            )
+            photo._extract_exif_data(True)
+            elapsed = (datetime.datetime.now() - start).total_seconds()
+            logger.info(
+                "job %d: extract exif data: %s, elapsed: %s", job_id, path, elapsed
+            )
             photo._generate_captions(False)
             elapsed = (datetime.datetime.now() - start).total_seconds()
             logger.info(
@@ -184,10 +194,18 @@ def handle_new_image(user, path, job_id, photo=None):
             logger.info(
                 "job %d: extract date time: %s, elapsed: %s", job_id, path, elapsed
             )
-            photo._extract_exif_data(True)
+            photo._extract_date_time_from_exif(True)
             elapsed = (datetime.datetime.now() - start).total_seconds()
             logger.info(
-                "job %d: extract exif data: %s, elapsed: %s", job_id, path, elapsed
+                "job %d: extract date time: %s, elapsed: %s", job_id, path, elapsed
+            )
+            photo._add_location_to_album_dates()
+            elapsed = (datetime.datetime.now() - start).total_seconds()
+            logger.info(
+                "job %d: add location to album dates: %s, elapsed: %s",
+                job_id,
+                path,
+                elapsed,
             )
             photo._extract_faces()
             elapsed = (datetime.datetime.now() - start).total_seconds()
@@ -225,9 +243,11 @@ def rescan_image(user, path, job_id):  # pylint: disable=unused-argument
             photo = Photos.objects.filter(Q(files__path=path)).get()
             photo._generate_optimized_image(True)
             photo._generate_thumbnail(True)
-            # photo._geolocate(True)
-            # photo._extract_exif_data(True)
-            # photo._extract_date_time_from_exif(True)
+            photo._calculate_aspect_ratio(False)
+            photo._geolocate(True)
+            photo._extract_exif_data(True)
+            photo._extract_date_time_from_exif(True)
+            photo._add_location_to_album_dates()
             photo._get_dominant_color()
             photo._recreate_search_captions()
 
@@ -298,7 +318,9 @@ def photo_scanner(user, last_scan, full_scan, path, job_id):
         old_path = path
         photo_name = os.path.splitext(os.path.basename(path))[0]
         photo_ext = os.path.splitext(os.path.basename(path))[1]
-        new_path = os.path.join(settings.MEDIA_ROOT, "originals", photo_name + photo_ext)
+        new_path = os.path.join(
+            settings.MEDIA_ROOT, "originals", photo_name + photo_ext
+        )
         shutil.copy(old_path, new_path)
 
         AsyncTask(handle_new_image, user, new_path, job_id).run()
