@@ -129,11 +129,11 @@ router.register(r"api/photos", photos.PhotosViewSet, basename="photos")
 
 router.register(r"api/services", services.ServiceViewSet, basename="services")
 
-router.register(r"api/user", user.UserViewSet, basename="user")
-
 router.register(r"api/user/manage", user.ManageUserViewSet, basename="user_manage")
 
 router.register(r"api/user/delete", user.DeleteUserViewSet, basename="user_delete")
+
+router.register(r"api/user", user.UserViewSet, basename="user")
 
 
 urlpatterns = [
@@ -184,17 +184,17 @@ urlpatterns = [
     re_path(r"^api/queue-availability/$", jobs.QueueAvailabilityView.as_view()),
     re_path(r"^api/rules/default", user.DefaultRulesView.as_view()),
     re_path(r"^api/rules/predefined", user.PredefinedRulesView.as_view()),
-    re_path(r"^api/scan/photos", misc_views.ScanPhotosView.as_view()),
     re_path(r"^api/scan/photos/uploaded", misc_views.FullScanPhotosView.as_view()),
     re_path(r"^api/scan/photos/full", misc_views.FullScanPhotosView.as_view()),
+    re_path(r"^api/scan/photos", misc_views.ScanPhotosView.as_view()),
     re_path(r"^api/search-term-examples", misc_views.SearchTermExamples.as_view()),
     re_path(r"^api/site-settings", misc_views.SiteSettingsView.as_view()),
-    re_path(r"^api/stats", dataviz.StatsView.as_view()),
     re_path(r"^api/stats/server", dataviz.ServerStatsView.as_view()),
     re_path(r"^api/stats/storage", misc_views.StorageStatsView.as_view()),
+    re_path(r"^api/stats", dataviz.StatsView.as_view()),
     re_path(r"^api/timezones", timezone.TimeZoneView.as_view()),
-    re_path(r"^api/upload/", upload.UploadPhotosChunked.as_view()),
     re_path(r"^api/upload/complete/", upload.UploadPhotosChunkedComplete.as_view()),
+    re_path(r"^api/upload/", upload.UploadPhotosChunked.as_view()),
     re_path(r"^api/word-cloud", dataviz.SearchTermWordCloudView.as_view()),
     re_path(
         r"^media/(?P<path>.*)/(?P<fname>.*)",

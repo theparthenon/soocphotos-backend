@@ -3,6 +3,7 @@
 import os
 import subprocess
 from PIL import Image
+from pillow_heif import register_heif_opener
 
 from django.conf import settings
 
@@ -11,6 +12,8 @@ def generate_optimized_image(
     input_path, output_path, image_hash, file_type, quality=85
 ):
     """Generate an optimized image from the given image."""
+
+    register_heif_opener()
 
     final_path = os.path.join(
         settings.MEDIA_ROOT, output_path, image_hash + file_type
@@ -23,6 +26,8 @@ def generate_optimized_image(
 
 def generate_thumbnail(input_path, output_path, image_hash, file_type):
     """Generate a thumbnail image from the given image."""
+
+    register_heif_opener()
 
     final_path = os.path.join(
         settings.MEDIA_ROOT, output_path, image_hash + file_type

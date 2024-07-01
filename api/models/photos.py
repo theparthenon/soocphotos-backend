@@ -5,6 +5,7 @@ import json
 import numbers
 import os
 from io import BytesIO
+from api.geocode import GEOCODE_VERSION
 import numpy as np
 import PIL
 from django.core.files.base import ContentFile
@@ -426,11 +427,27 @@ class Photos(models.Model):
             self.save()
 
     def _geolocate(self, commit=True):
+        old_gps_lat = self.exif_gps_lat
+        old_gps_lon = self.exif_gps_lon
         new_gps_lat, new_gps_lon = get_metadata(
-            self.original_image.path,
+            self.main_file.path,
             tags=[Tags.LATITUDE, Tags.LONGITUDE],
             try_sidecar=True,
         )
+
+        old_album_places = self._find_album_place()
+        # Skip if it hasn't changed or is null
+        if not new_gps_lat or not new_gps_lon:
+            return
+        if (
+            old_gps_lat == float(new_gps_lat)
+            and old_gps_lon == float(new_gps_lon)
+            and old_album_places.count() != 0
+            and self.geolocation_json
+            and "_v" in self.geolocation_json
+            and self.geolocation_json["_v"] == GEOCODE_VERSION
+        ):
+            return
 
         self.exif_gps_lat = float(new_gps_lat)
         self.exif_gps_lon = float(new_gps_lon)
@@ -454,7 +471,25 @@ class Photos(models.Model):
         self.geolocation_json = res
         self.search_location = res["address"]
 
-        # TODO: possibly add places album
+        # Delete photo from album places if location has changed
+        if old_album_places is not None:
+            for old_album_place in old_album_places:
+                old_album_place.photos.remove(self)
+                old_album_place.save()
+
+        # Add photo to new album places
+        for geolocation_level, feature in enumerate(self.geolocation_json["features"]):
+            if "text" not in feature.keys() or feature["text"].isnumeric():
+                continue
+            album_place = api.models.album_place.get_album_place(
+                feature["text"], owner=self.owner
+            )
+            if album_place.photos.filter(image_hash=self.image_hash).count() == 0:
+                album_place.geolocation_level = (
+                    len(self.geolocation_json["features"]) - geolocation_level
+                )
+            album_place.photos.add(self)
+            album_place.save()
 
         if commit:
             self.save()
@@ -764,6 +799,8 @@ class Photos(models.Model):
             return
 
         try:
+            register_heif_opener()
+
             # Resize image to speed up processing
             img = PIL.Image.open(self.optimized_image.path)
             img.thumbnail((100, 100))

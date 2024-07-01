@@ -155,13 +155,13 @@ def handle_new_image(user, path, job_id, photo=None):
         if photo is None:
             photo = create_new_image(user, path)
             elapsed = (datetime.datetime.now() - start).total_seconds()
-            logger.info("Job %d: save image: %s, elapsed: %s", job_id, path, elapsed)
+            logger.info("Job %s: save image: %s, elapsed: %s", job_id, path, elapsed)
         if photo:
-            logger.info("job %d: handling image %s", job_id, path)
+            logger.info("job %s: handling image %s", job_id, path)
             photo._generate_optimized_image(True)
             elapsed = (datetime.datetime.now() - start).total_seconds()
             logger.info(
-                "job %d: generate optimized image: %s, elapsed: %s",
+                "job %s: generate optimized image: %s, elapsed: %s",
                 job_id,
                 path,
                 elapsed,
@@ -169,56 +169,56 @@ def handle_new_image(user, path, job_id, photo=None):
             photo._generate_thumbnail(True)
             elapsed = (datetime.datetime.now() - start).total_seconds()
             logger.info(
-                "job %d: generate thumbnails: %s, elapsed: %s", job_id, path, elapsed
+                "job %s: generate thumbnails: %s, elapsed: %s", job_id, path, elapsed
             )
             photo._calculate_aspect_ratio(False)
             elapsed = (datetime.datetime.now() - start).total_seconds()
             logger.info(
-                "job %d: calculate aspect ratio: %s, elapsed: %s", job_id, path, elapsed
+                "job %s: calculate aspect ratio: %s, elapsed: %s", job_id, path, elapsed
             )
             photo._extract_exif_data(True)
             elapsed = (datetime.datetime.now() - start).total_seconds()
             logger.info(
-                "job %d: extract exif data: %s, elapsed: %s", job_id, path, elapsed
+                "job %s: extract exif data: %s, elapsed: %s", job_id, path, elapsed
             )
             photo._generate_captions(False)
             elapsed = (datetime.datetime.now() - start).total_seconds()
             logger.info(
-                "job %d: generate caption: %s, elapsed: %s", job_id, path, elapsed
+                "job %s: generate caption: %s, elapsed: %s", job_id, path, elapsed
             )
             photo._geolocate(True)
             elapsed = (datetime.datetime.now() - start).total_seconds()
-            logger.info("job %d: geolocate: %s, elapsed: %s", job_id, path, elapsed)
+            logger.info("job %s: geolocate: %s, elapsed: %s", job_id, path, elapsed)
             photo._extract_date_time_from_exif(True)
             elapsed = (datetime.datetime.now() - start).total_seconds()
             logger.info(
-                "job %d: extract date time: %s, elapsed: %s", job_id, path, elapsed
+                "job %s: extract date time: %s, elapsed: %s", job_id, path, elapsed
             )
             photo._extract_date_time_from_exif(True)
             elapsed = (datetime.datetime.now() - start).total_seconds()
             logger.info(
-                "job %d: extract date time: %s, elapsed: %s", job_id, path, elapsed
+                "job %s: extract date time: %s, elapsed: %s", job_id, path, elapsed
             )
             photo._add_location_to_album_dates()
             elapsed = (datetime.datetime.now() - start).total_seconds()
             logger.info(
-                "job %d: add location to album dates: %s, elapsed: %s",
+                "job %s: add location to album dates: %s, elapsed: %s",
                 job_id,
                 path,
                 elapsed,
             )
             photo._extract_faces()
             elapsed = (datetime.datetime.now() - start).total_seconds()
-            logger.info("job %d: extract faces: %s, elapsed: %s", job_id, path, elapsed)
+            logger.info("job %s: extract faces: %s, elapsed: %s", job_id, path, elapsed)
             photo._get_dominant_color()
             elapsed = (datetime.datetime.now() - start).total_seconds()
             logger.info(
-                "job %d: get dominant color: %s, elapsed: %s", job_id, path, elapsed
+                "job %s: get dominant color: %s, elapsed: %s", job_id, path, elapsed
             )
             photo._recreate_search_captions()
             elapsed = (datetime.datetime.now() - start).total_seconds()
             logger.info(
-                "job %d: seach caption recreated: %s, elapsed: %s",
+                "job %s: seach caption recreated: %s, elapsed: %s",
                 job_id,
                 path,
                 elapsed,
@@ -227,10 +227,10 @@ def handle_new_image(user, path, job_id, photo=None):
     except OSError as e:
         try:
             logger.exception(
-                "job %d: could not load image %s. reason: %s", job_id, path, str(e)
+                "job %s: could not load image %s. reason: %s", job_id, path, str(e)
             )
         except Exception:  # pylint: disable=broad-except
-            logger.exception("job %d: could not load image %s", job_id, path)
+            logger.exception("job %s: could not load image %s", job_id, path)
 
 
 def rescan_image(user, path, job_id):  # pylint: disable=unused-argument
@@ -254,10 +254,10 @@ def rescan_image(user, path, job_id):  # pylint: disable=unused-argument
     except OSError as e:
         try:
             logger.exception(
-                "job %d: could not load image %s. reason: %s", job_id, path, e
+                "job %s: could not load image %s. reason: %s", job_id, path, e
             )
         except Exception:  # pylint: disable=broad-except
-            logger.exception("job %d: could not load image %s", job_id, path)
+            logger.exception("job %s: could not load image %s", job_id, path)
 
 
 def walk_directory(directory, callback):
