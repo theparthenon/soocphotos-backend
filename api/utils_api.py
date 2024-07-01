@@ -5,6 +5,7 @@ import random
 import stat
 from datetime import datetime
 
+from api.models.album_auto import AlbumAuto
 import numpy as np
 import seaborn as sns
 from django.db import connection
@@ -632,6 +633,12 @@ def get_count_stats(user):
         .filter(Q(viewable_face_count__gt=0))
         .count()
     )
+    num_albumauto = (
+        AlbumAuto.objects.filter(owner=user)
+        .annotate(photo_count=Count("photos"))
+        .filter(Q(photo_count__gt=0))
+        .count()
+    )
     num_albumdate = (
         AlbumDate.objects.filter(owner=user)
         .annotate(photo_count=Count("photos"))
@@ -653,6 +660,7 @@ def get_count_stats(user):
         "num_unknown_faces": num_unknown_faces,
         "num_labeled_faces": num_labeled_faces,
         "num_inferred_faces": num_inferred_faces,
+        "num_albumauto": num_albumauto,
         "num_albumdate": num_albumdate,
         "num_albumuser": num_albumuser,
     }
