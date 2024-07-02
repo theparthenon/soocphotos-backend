@@ -45,7 +45,7 @@ gevent==24.2.1
 greenlet==3.0.3
 gunicorn==22.0.0
 h3==3.7.7
-hdbscan==0.8.36
+hdbscan==0.8.37
 huggingface-hub==0.23.4
 humanfriendly==10.0
 idna==3.7
